@@ -6,10 +6,18 @@ export type WalletType =
   | 'Emergency fund'
   | 'Other'
 
+export const WALLET_ICONS = ['wallet', 'cash', 'bank', 'savings', 'card', 'other'] as const
+export type WalletIcon = (typeof WALLET_ICONS)[number]
+
+export const WALLET_COLORS = ['green', 'blue', 'purple', 'orange', 'red', 'gray'] as const
+export type WalletColor = (typeof WALLET_COLORS)[number]
+
 export interface Wallet {
   id: string
   name: string
   type: WalletType
+  icon: WalletIcon
+  color: WalletColor
   openingBalanceCentavos: number
   protected: boolean
   archived: boolean
@@ -23,7 +31,7 @@ interface Preference {
 }
 
 const DATABASE_NAME = 'mpkpb'
-const DATABASE_VERSION = 1
+const DATABASE_VERSION = 2
 const STORE_NAMES = [
   'wallets',
   'transactions',
@@ -50,6 +58,46 @@ export function isWalletType(value: unknown): value is WalletType {
   return typeof value === 'string' && WALLET_TYPES.some((type) => type === value)
 }
 
+export function isWalletIcon(value: unknown): value is WalletIcon {
+  return typeof value === 'string' && WALLET_ICONS.some((icon) => icon === value)
+}
+
+export function isWalletColor(value: unknown): value is WalletColor {
+  return typeof value === 'string' && WALLET_COLORS.some((color) => color === value)
+}
+
+export function defaultWalletIcon(type: WalletType): WalletIcon {
+  switch (type) {
+    case 'Cash':
+      return 'cash'
+    case 'Bank':
+      return 'bank'
+    case 'Savings':
+    case 'Emergency fund':
+      return 'savings'
+    case 'E-wallet':
+      return 'wallet'
+    case 'Other':
+      return 'other'
+  }
+}
+
+export function defaultWalletColor(type: WalletType): WalletColor {
+  switch (type) {
+    case 'Cash':
+    case 'Savings':
+      return 'green'
+    case 'E-wallet':
+      return 'blue'
+    case 'Bank':
+      return 'purple'
+    case 'Emergency fund':
+      return 'orange'
+    case 'Other':
+      return 'gray'
+  }
+}
+
 function openDatabase(): Promise<IDBDatabase> {
   if (databaseInstance) return Promise.resolve(databaseInstance)
   if (databaseOpening) return databaseOpening
@@ -61,13 +109,37 @@ function openDatabase(): Promise<IDBDatabase> {
   databaseOpening = new Promise((resolve, reject) => {
     const request = window.indexedDB.open(DATABASE_NAME, DATABASE_VERSION)
 
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const database = request.result
       for (const storeName of STORE_NAMES) {
         if (!database.objectStoreNames.contains(storeName)) {
           database.createObjectStore(storeName, {
             keyPath: storeName === 'preferences' ? 'key' : 'id',
           })
+        }
+
+        if (event.oldVersion < 2) {
+          const walletStore = request.transaction?.objectStore('wallets')
+          if (walletStore) {
+            const cursorRequest = walletStore.openCursor()
+            cursorRequest.onsuccess = () => {
+              const cursor = cursorRequest.result
+              if (!cursor) return
+
+              const storedWallet = cursor.value as Partial<Wallet>
+              const walletType = isWalletType(storedWallet.type) ? storedWallet.type : 'Other'
+              cursor.update({
+                ...storedWallet,
+                icon: isWalletIcon(storedWallet.icon)
+                  ? storedWallet.icon
+                  : defaultWalletIcon(walletType),
+                color: isWalletColor(storedWallet.color)
+                  ? storedWallet.color
+                  : defaultWalletColor(walletType),
+              })
+              cursor.continue()
+            }
+          }
         }
       }
     }
@@ -120,6 +192,8 @@ function isWallet(value: unknown): value is Wallet {
     typeof wallet.name === 'string' &&
     wallet.name.trim().length > 0 &&
     isWalletType(wallet.type) &&
+    isWalletIcon(wallet.icon) &&
+    isWalletColor(wallet.color) &&
     typeof balance === 'number' &&
     Number.isSafeInteger(balance) &&
     balance >= 0 &&
@@ -142,7 +216,7 @@ export async function getWallets(): Promise<Wallet[]> {
   if (!results.every(isWallet)) {
     throw new Error('Some saved wallet data is invalid. No balances were changed.')
   }
-  return results.filter((wallet) => !wallet.archived)
+  return results
 }
 
 export async function createWallet(wallet: Wallet, displayName?: string): Promise<void> {
@@ -154,10 +228,43 @@ export async function createWallet(wallet: Wallet, displayName?: string): Promis
   const transaction = database.transaction(['wallets', 'preferences'], 'readwrite')
   const completed = transactionComplete(transaction)
   transaction.objectStore('wallets').add(wallet)
+  transaction.objectStore('preferences').put({ key: 'onboardingComplete', value: 'true' } satisfies Preference)
   if (displayName) {
     transaction.objectStore('preferences').put({ key: 'displayName', value: displayName } satisfies Preference)
   }
   await completed
+}
+
+export async function updateWallet(wallet: Wallet): Promise<void> {
+  if (!isWallet(wallet)) {
+    throw new Error('The wallet details are invalid. Please check the name and balance.')
+  }
+
+  const database = await openDatabase()
+  const transaction = database.transaction('wallets', 'readwrite')
+  const completed = transactionComplete(transaction)
+  transaction.objectStore('wallets').put(wallet)
+  await completed
+}
+
+export async function archiveWallet(wallet: Wallet): Promise<Wallet> {
+  const archivedWallet = {
+    ...wallet,
+    archived: true,
+    updatedAt: new Date().toISOString(),
+  }
+  await updateWallet(archivedWallet)
+  return archivedWallet
+}
+
+export async function restoreWallet(wallet: Wallet): Promise<Wallet> {
+  const restoredWallet = {
+    ...wallet,
+    archived: false,
+    updatedAt: new Date().toISOString(),
+  }
+  await updateWallet(restoredWallet)
+  return restoredWallet
 }
 
 export async function getPreference(key: string): Promise<string | undefined> {

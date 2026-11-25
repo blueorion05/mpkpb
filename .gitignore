@@ -14,8 +14,8 @@ dist-ssr
 .env
 .env.*
 !.env.example
-*.mpkpb-backup.json
-*.mpkpb-snapshot.json
+*mpkpb*backup*.json
+*mpkpb*snapshot*.json
 
 # Editor directories and files
 .vscode/*

@@ -2,19 +2,19 @@
 
 ## Current layout
 
-- `src/App.tsx`: responsive app shell, navigation, first-wallet setup, and foundation views.
-- `src/db/database.ts`: browser-native IndexedDB database and typed wallet/preference operations.
+- `src/App.tsx`: responsive app shell, navigation, first-run onboarding, wallet management, and foundation views.
+- `src/db/database.ts`: browser-native IndexedDB database, schema migration, and typed wallet/preference operations.
 - `src/domain/money.ts`: centavo parsing, PHP formatting, and safe aggregation.
 - `tests/money.test.ts`: focused tests using Node's built-in test runner.
 - `src/index.css` and `src/App.css`: theme tokens, global styles, and responsive components.
 
 ## Local database
 
-Database: `mpkpb`, schema version `1`. Stores are created in IndexedDB's upgrade transaction:
+Database: `mpkpb`, schema version `2`. Stores are created in IndexedDB's upgrade transaction. Version 2 adds wallet icon/color attributes and migrates existing wallet records with type-appropriate defaults:
 
 | Store | Key path | Purpose |
 | --- | --- | --- |
-| wallets | `id` | User-created wallet records |
+| wallets | `id` | User-created wallet records with type, icon, color, opening centavos, and archive/protection state |
 | transactions | `id` | Reserved for the future ledger |
 | categories | `id` | Reserved for customizable categories |
 | budgets | `id` | Reserved for budget plans |
@@ -23,7 +23,7 @@ Database: `mpkpb`, schema version `1`. Stores are created in IndexedDB's upgrade
 | snapshots | `id` | Reserved for local save history |
 | preferences | `key` | Theme and optional display name |
 
-Database access stays in `src/db`. Future schema changes must increment the database version and use IndexedDB's `onupgradeneeded` migration transaction. Storage and migration errors must be visible to users; never silently substitute in-memory state for persisted financial data.
+Database access stays in `src/db`. Future schema changes must increment the database version and use IndexedDB's `onupgradeneeded` migration transaction. Archived wallets remain stored and counted in total balance; they are excluded from spendable funds until restored. Storage and migration errors must be visible to users; never silently substitute in-memory state for persisted financial data.
 
 ## Calculation rules
 

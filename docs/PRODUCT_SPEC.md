@@ -17,7 +17,7 @@ Dashboard, wallets, transactions, budget plans, calendar/forecast, debts, insigh
 
 ## Current foundation
 
-The initial implementation provides the responsive application shell, theme choice, local wallet setup, balance visibility toggle, IndexedDB persistence, and centavo-formatting utilities. It does not yet calculate ledger balances, budgets, debts, or forecasts. See `docs/ROADMAP.md` for current scope and sequencing.
+The v0.1.0 foundation provides a responsive application shell, skippable first-run wallet onboarding, wallet create/edit/archive/restore, custom names/icons/colors, protected funds, theme choice, balance visibility, IndexedDB persistence, and centavo utilities. It does not yet include a transaction ledger, budgets, debts, or forecasts. See `docs/ROADMAP.md` for current scope and sequencing.
 
 ## Financial behavior
 

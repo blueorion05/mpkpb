@@ -2,22 +2,24 @@
 
 ## Current status
 
-Foundation implementation is underway. The app shell, desktop/mobile navigation, theme selection, balance visibility, first-wallet setup, local IndexedDB persistence, and integer-centavo money utilities are implemented.
+v0.1.0 Phase 1 is complete. The responsive app shell, desktop/mobile navigation, skippable first-run onboarding, wallet creation/edit/archive/restore, custom wallet icons/colors, protected funds, theme selection, balance visibility, versioned IndexedDB persistence, accessible states, and integer-centavo money utilities are implemented.
 
 ## Verified
 
 - Workspace was initially empty; Node.js v25.8.0, npm 11.11.0, and Git 2.46.1 are available.
 - Vite scaffold created a local Git repository on `main`.
-- Node supports `--experimental-strip-types`, enabling built-in tests without adding test dependencies.
-- `npm test`: 3 tests passed.
-- Node syntax checks passed for `src/db/database.ts` and `src/domain/money.ts`.
+- `npm ls --depth=0`: all declared dependencies are installed; `package-lock.json` is present.
+- `npm test`: all 3 centavo tests passed.
+- `npm run lint`: passed.
+- `npm run typecheck`: passed.
+- `npm run build`: passed.
+- Browser checks verified first-run setup, wallet creation/edit/archive/restore, IndexedDB persistence after refresh, theme persistence, and desktop/mobile navigation. No financial data requests left the local origin.
 
 ## Not verified
 
-- Dependency installation was not approved in this environment. With no `node_modules` or package lockfile, `npm run lint` and `npm run build` fail because Oxlint and TypeScript are unavailable.
-- Browser UI, IndexedDB reload persistence, responsive layouts, and accessibility have not yet been verified in a browser.
-- No GitHub remote, GitHub Actions workflow, or Vercel project is configured.
+- The activity, budget, debt, and forecast views are intentionally not implemented; these belong to later roadmap phases.
+- No GitHub Actions workflow or Vercel deployment is configured.
 
 ## Next
 
-Install dependencies and generate the lockfile, then run `npm test`, `npm run lint`, and `npm run build`. Validate first-run wallet setup, reload persistence, theme behavior, and mobile navigation in a browser before implementing the transaction ledger.
+Next: begin Phase 2 transaction ledger work only when requested. Preserve archived wallet balances and existing IndexedDB data during subsequent schema changes.

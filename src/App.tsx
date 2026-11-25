@@ -1,10 +1,21 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
+  archiveWallet,
   createWallet,
+  defaultWalletColor,
+  defaultWalletIcon,
   getPreference,
   getWallets,
+  isWalletColor,
+  isWalletIcon,
   isWalletType,
+  restoreWallet,
   savePreference,
+  updateWallet,
+  WALLET_COLORS,
+  WALLET_ICONS,
+  type WalletColor,
+  type WalletIcon,
   type Wallet,
 } from './db/database'
 import { formatPHP, parsePesoToCentavos, sumCentavos } from './domain/money'
@@ -20,6 +31,57 @@ const pages: { id: Page; label: string; icon: string }[] = [
   { id: 'plans', label: 'Plans', icon: '▤' },
   { id: 'more', label: 'More', icon: '•••' },
 ]
+const iconLabels: Record<WalletIcon, string> = {
+  wallet: 'Wallet',
+  cash: 'Cash',
+  bank: 'Bank',
+  savings: 'Savings',
+  card: 'Card',
+  other: 'Other',
+}
+const iconGlyphs: Record<WalletIcon, string> = {
+  wallet: '▣',
+  cash: '₱',
+  bank: '▥',
+  savings: '◒',
+  card: '▤',
+  other: '⋯',
+}
+const colorLabels: Record<WalletColor, string> = {
+  green: 'Green',
+  blue: 'Blue',
+  purple: 'Purple',
+  orange: 'Orange',
+  red: 'Red',
+  gray: 'Gray',
+}
+const todayLabel = new Intl.DateTimeFormat('en-PH', {
+  weekday: 'long',
+  month: 'long',
+  day: 'numeric',
+}).format(new Date())
+
+function centavosInput(amount: number): string {
+  return `${Math.floor(amount / 100)}.${String(amount % 100).padStart(2, '0')}`
+}
+
+function keepFocusInside(event: KeyboardEvent, dialog: HTMLElement | null) {
+  if (event.key !== 'Tab' || !dialog) return
+  const focusable = dialog.querySelectorAll<HTMLElement>(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+  )
+  if (focusable.length === 0) return
+
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
 
 function App() {
   const [page, setPage] = useState<Page>('home')
@@ -28,31 +90,57 @@ function App() {
   const [displayName, setDisplayName] = useState('')
   const [balanceVisible, setBalanceVisible] = useState(true)
   const [loading, setLoading] = useState(true)
+  const [walletLoadError, setWalletLoadError] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [isOnboarding, setIsOnboarding] = useState(false)
+  const [editingWallet, setEditingWallet] = useState<Wallet | null>(null)
+  const [walletToArchive, setWalletToArchive] = useState<Wallet | null>(null)
   const [formError, setFormError] = useState('')
   const [pageError, setPageError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
+  const walletDialogRef = useRef<HTMLElement>(null)
+  const archiveDialogRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     let active = true
 
     async function load() {
+      let savedWallets: Wallet[]
       try {
-        const [savedWallets, savedTheme, savedName] = await Promise.all([
-          getWallets(),
-          getPreference('theme'),
-          getPreference('displayName'),
-        ])
+        savedWallets = await getWallets()
         if (!active) return
         setWallets(savedWallets)
+        setWalletLoadError(false)
+      } catch (error) {
+        if (active) {
+          setWalletLoadError(true)
+          setPageError(
+            error instanceof Error ? error.message : 'Local data could not be loaded.',
+          )
+          setLoading(false)
+        }
+        return
+      }
+
+      try {
+        const [savedTheme, savedName, onboardingComplete] = await Promise.all([
+          getPreference('theme'),
+          getPreference('displayName'),
+          getPreference('onboardingComplete'),
+        ])
+        if (!active) return
         if (savedTheme === 'system' || savedTheme === 'light' || savedTheme === 'dark') {
           setTheme(savedTheme)
         }
         setDisplayName(savedName ?? '')
+        if (savedWallets.length === 0 && onboardingComplete !== 'true') {
+          setIsOnboarding(true)
+          setDialogOpen(true)
+        }
       } catch (error) {
         if (active) {
-          setPageError(
-            error instanceof Error ? error.message : 'Local data could not be loaded.',
-          )
+          setPageError(error instanceof Error ? error.message : 'Preferences could not be loaded.')
         }
       } finally {
         if (active) setLoading(false)
@@ -63,7 +151,7 @@ function App() {
     return () => {
       active = false
     }
-  }, [])
+  }, [loadAttempt])
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -72,26 +160,47 @@ function App() {
   useEffect(() => {
     if (!dialogOpen) return
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setDialogOpen(false)
+      keepFocusInside(event, walletDialogRef.current)
+      if (event.key === 'Escape') {
+        setDialogOpen(false)
+        setEditingWallet(null)
+        if (isOnboarding) {
+          setIsOnboarding(false)
+          void savePreference('onboardingComplete', 'true').catch((error: unknown) => {
+            setPageError(error instanceof Error ? error.message : 'Onboarding preference could not be saved.')
+          })
+        }
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [dialogOpen])
+  }, [dialogOpen, isOnboarding])
+
+  useEffect(() => {
+    if (!walletToArchive) return
+    function handleKeyDown(event: KeyboardEvent) {
+      keepFocusInside(event, archiveDialogRef.current)
+      if (event.key === 'Escape') setWalletToArchive(null)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [walletToArchive])
 
   const totals = useMemo(() => {
+    if (walletLoadError) return null
     try {
       return {
         all: sumCentavos(wallets.map((wallet) => wallet.openingBalanceCentavos)),
         spendable: sumCentavos(
           wallets
-            .filter((wallet) => !wallet.protected)
+            .filter((wallet) => !wallet.protected && !wallet.archived)
             .map((wallet) => wallet.openingBalanceCentavos),
         ),
       }
     } catch {
       return null
     }
-  }, [wallets])
+  }, [wallets, walletLoadError])
 
   async function changeTheme(nextTheme: Theme) {
     setTheme(nextTheme)
@@ -102,12 +211,14 @@ function App() {
     }
   }
 
-  async function handleCreateWallet(event: FormEvent<HTMLFormElement>) {
+  async function handleSaveWallet(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setFormError('')
     const formData = new FormData(event.currentTarget)
     const name = String(formData.get('walletName') ?? '').trim()
     const type = String(formData.get('walletType') ?? '')
+    const icon = String(formData.get('walletIcon') ?? '')
+    const color = String(formData.get('walletColor') ?? '')
     const amount = parsePesoToCentavos(String(formData.get('openingBalance') ?? ''))
 
     if (!name) {
@@ -118,29 +229,45 @@ function App() {
       setFormError('Choose a valid wallet type.')
       return
     }
+    if (!isWalletIcon(icon) || !isWalletColor(color)) {
+      setFormError('Choose a valid wallet icon and color.')
+      return
+    }
     if (amount === null) {
       setFormError('Enter an amount with no more than two decimal places.')
       return
     }
 
     const now = new Date().toISOString()
+    const previousWallet = editingWallet
     const wallet: Wallet = {
-      id: crypto.randomUUID(),
+      id: previousWallet?.id ?? crypto.randomUUID(),
       name,
       type,
+      icon,
+      color,
       openingBalanceCentavos: amount,
       protected: formData.get('protected') === 'on',
       archived: false,
-      createdAt: now,
+      createdAt: previousWallet?.createdAt ?? now,
       updatedAt: now,
     }
     const nameInput = String(formData.get('displayName') ?? '').trim()
 
     try {
-      await createWallet(wallet, nameInput || undefined)
-      setWallets((current) => [...current, wallet])
+      if (previousWallet) {
+        await updateWallet(wallet)
+        setWallets((current) => current.map((item) => item.id === wallet.id ? wallet : item))
+        setSuccessMessage(`${wallet.name} updated. Looks good, Geng Geng.`)
+      } else {
+        await createWallet(wallet, nameInput || undefined)
+        setWallets((current) => [...current, wallet])
+        setSuccessMessage(`${wallet.name} saved. Pera, meet dashboard.`)
+      }
       if (nameInput) setDisplayName(nameInput)
       setDialogOpen(false)
+      setIsOnboarding(false)
+      setEditingWallet(null)
     } catch (error) {
       setFormError(
         error instanceof Error ? error.message : 'The wallet could not be saved.',
@@ -148,16 +275,60 @@ function App() {
     }
   }
 
-  const currentLabel = pages.find((item) => item.id === page)?.label ?? 'Home'
-  const date = new Intl.DateTimeFormat('en-PH', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  }).format(new Date())
-  const openWalletDialog = () => {
+  async function closeWalletDialog() {
+    if (isOnboarding) {
+      try {
+        await savePreference('onboardingComplete', 'true')
+      } catch (error) {
+        setPageError(error instanceof Error ? error.message : 'Onboarding preference could not be saved.')
+      }
+    }
+    setDialogOpen(false)
+    setIsOnboarding(false)
+    setEditingWallet(null)
+  }
+
+  function openWalletDialog() {
     setFormError('')
+    setEditingWallet(null)
+    setIsOnboarding(false)
     setDialogOpen(true)
   }
+
+  function openEditWallet(wallet: Wallet) {
+    setFormError('')
+    setEditingWallet(wallet)
+    setIsOnboarding(false)
+    setDialogOpen(true)
+  }
+
+  async function confirmArchiveWallet() {
+    if (!walletToArchive) return
+    try {
+      const archivedWallet = await archiveWallet(walletToArchive)
+      setWallets((current) => current.map((wallet) =>
+        wallet.id === archivedWallet.id ? archivedWallet : wallet,
+      ))
+      setSuccessMessage(`${walletToArchive.name} archived. Its balance is still included in your total.`)
+      setWalletToArchive(null)
+    } catch (error) {
+      setPageError(error instanceof Error ? error.message : 'The wallet could not be archived.')
+    }
+  }
+
+  async function handleRestoreWallet(wallet: Wallet) {
+    try {
+      const restoredWallet = await restoreWallet(wallet)
+      setWallets((current) => current.map((item) => item.id === wallet.id ? restoredWallet : item))
+      setSuccessMessage(`${wallet.name} is back in your active wallets.`)
+    } catch (error) {
+      setPageError(error instanceof Error ? error.message : 'The wallet could not be restored.')
+    }
+  }
+
+  const currentLabel = pages.find((item) => item.id === page)?.label ?? 'Home'
+  const activeWallets = wallets.filter((wallet) => !wallet.archived)
+  const archivedWallets = wallets.filter((wallet) => wallet.archived)
 
   return (
     <div className="app-shell">
@@ -198,7 +369,7 @@ function App() {
           <div className="mobile-brand"><span className="brand-mark">m?</span><strong>mpkpb?</strong></div>
           <div className="breadcrumb"><span>Workspace</span><span aria-hidden="true">›</span><strong>{currentLabel}</strong></div>
           <div className="top-actions">
-            <span className="today-label">{date}</span>
+            <span className="today-label">{todayLabel}</span>
             <button
               className="icon-button"
               type="button"
@@ -220,27 +391,48 @@ function App() {
           {pageError && (
             <div className="error-banner" role="alert">
               <span>{pageError}</span>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  setPageError('')
+                  setLoading(true)
+                  setLoadAttempt((attempt) => attempt + 1)
+                }}
+              >Retry</button>
               <button type="button" className="text-button" onClick={() => setPageError('')}>Dismiss</button>
+            </div>
+          )}
+          {successMessage && (
+            <div className="success-banner" role="status">
+              <span>{successMessage}</span>
+              <button type="button" className="text-button" onClick={() => setSuccessMessage('')}>Dismiss</button>
             </div>
           )}
           {page === 'home' && (
             <Dashboard
               displayName={displayName}
-              wallets={wallets}
+              wallets={activeWallets}
               totals={totals}
               visible={balanceVisible}
               loading={loading}
+              dataUnavailable={walletLoadError}
               onAddWallet={openWalletDialog}
               onViewWallets={() => setPage('wallets')}
             />
           )}
           {page === 'wallets' && (
             <WalletsPage
-              wallets={wallets}
+              wallets={activeWallets}
+              archivedWallets={archivedWallets}
               totals={totals}
               visible={balanceVisible}
               loading={loading}
+              dataUnavailable={walletLoadError}
               onAdd={openWalletDialog}
+              onEdit={openEditWallet}
+              onArchive={setWalletToArchive}
+              onRestore={(wallet) => void handleRestoreWallet(wallet)}
             />
           )}
           {page === 'activity' && (
@@ -271,20 +463,20 @@ function App() {
         <div
           className="dialog-backdrop"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setDialogOpen(false)
+            if (event.target === event.currentTarget) void closeWalletDialog()
           }}
         >
-          <section className="wallet-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+          <section ref={walletDialogRef} className="wallet-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
             <div className="dialog-heading">
               <div>
-                <span className="eyebrow">{wallets.length === 0 ? 'LET’S GET STARTED' : 'WALLET SETUP'}</span>
-                <h2 id="dialog-title">{wallets.length === 0 ? 'Where’s your money?' : 'Add a wallet'}</h2>
-                <p>Cash, GCash, savings — whatever keeps your pera.</p>
+                <span className="eyebrow">{isOnboarding ? 'WELCOME TO MPKPB?' : editingWallet ? 'WALLET DETAILS' : 'WALLET SETUP'}</span>
+                <h2 id="dialog-title">{isOnboarding ? 'Let’s give your money a home.' : editingWallet ? 'Edit wallet' : 'Add a wallet'}</h2>
+                <p>{isOnboarding ? 'No account needed. Start with one wallet — skip anytime.' : 'Cash, GCash, savings — whatever keeps your pera.'}</p>
               </div>
-              <button className="icon-button" type="button" aria-label="Close dialog" onClick={() => setDialogOpen(false)}>×</button>
+              <button className="icon-button" type="button" aria-label="Close dialog" onClick={() => void closeWalletDialog()}>×</button>
             </div>
-            <form className="wallet-form" onSubmit={(event) => void handleCreateWallet(event)}>
-              {wallets.length === 0 && (
+            <form className="wallet-form" onSubmit={(event) => void handleSaveWallet(event)}>
+              {wallets.length === 0 && !editingWallet && (
                 <label className="field">
                   <span>Your name <small>optional</small></span>
                   <input name="displayName" autoComplete="given-name" placeholder="What should we call you?" />
@@ -292,22 +484,36 @@ function App() {
               )}
               <label className="field">
                 <span>Wallet name</span>
-                <input name="walletName" autoFocus required placeholder="e.g. GCash" />
+                <input name="walletName" autoFocus required maxLength={50} defaultValue={editingWallet?.name ?? ''} placeholder="e.g. GCash" />
               </label>
               <div className="form-row">
                 <label className="field">
                   <span>Wallet type</span>
-                  <select name="walletType" defaultValue="E-wallet">
+                  <select name="walletType" defaultValue={editingWallet?.type ?? 'E-wallet'}>
                     <option>Cash</option><option>E-wallet</option><option>Bank</option>
                     <option>Savings</option><option>Emergency fund</option><option>Other</option>
                   </select>
                 </label>
                 <label className="field">
+                  <span>Wallet icon</span>
+                  <select name="walletIcon" defaultValue={editingWallet?.icon ?? defaultWalletIcon('E-wallet')}>
+                    {WALLET_ICONS.map((icon) => <option key={icon} value={icon}>{iconLabels[icon]}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="form-row">
+                <label className="field">
                   <span>Starting balance</span>
                   <span className="currency-input">
                     <b>₱</b>
-                    <input name="openingBalance" inputMode="decimal" defaultValue="0.00" required aria-label="Starting balance in pesos" />
+                    <input name="openingBalance" inputMode="decimal" defaultValue={editingWallet ? centavosInput(editingWallet.openingBalanceCentavos) : '0.00'} required aria-label="Starting balance in pesos" />
                   </span>
+                </label>
+                <label className="field">
+                  <span>Wallet color</span>
+                  <select name="walletColor" defaultValue={editingWallet?.color ?? defaultWalletColor('E-wallet')}>
+                    {WALLET_COLORS.map((color) => <option key={color} value={color}>{colorLabels[color]}</option>)}
+                  </select>
                 </label>
               </div>
               <label className="checkbox-field">
@@ -316,11 +522,26 @@ function App() {
               </label>
               {formError && <p className="form-error" role="alert">{formError}</p>}
               <div className="dialog-actions">
-                <button className="button button-quiet" type="button" onClick={() => setDialogOpen(false)}>Not now</button>
-                <button className="button button-primary" type="submit">＋ Save wallet</button>
+                <button className="button button-quiet" type="button" onClick={() => void closeWalletDialog()}>{isOnboarding ? 'Skip for now' : 'Cancel'}</button>
+                <button className="button button-primary" type="submit">{editingWallet ? 'Save changes' : '＋ Save wallet'}</button>
               </div>
               <p className="form-privacy">⌑ Saved on this device only.</p>
             </form>
+          </section>
+        </div>
+      )}
+      {walletToArchive && (
+        <div className="dialog-backdrop" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setWalletToArchive(null)
+        }}>
+          <section ref={archiveDialogRef} className="wallet-dialog confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="archive-title" aria-describedby="archive-description">
+            <span className="eyebrow">KEEPING THINGS TIDY</span>
+            <h2 id="archive-title">Archive {walletToArchive.name}?</h2>
+            <p id="archive-description">It will leave your active list and spendable total, but stay saved and included in your total balance. You can restore it later.</p>
+            <div className="dialog-actions">
+              <button className="button button-quiet" type="button" autoFocus onClick={() => setWalletToArchive(null)}>Keep wallet</button>
+              <button className="button button-danger" type="button" onClick={() => void confirmArchiveWallet()}>Archive wallet</button>
+            </div>
           </section>
         </div>
       )}
@@ -334,6 +555,7 @@ function Dashboard({
   totals,
   visible,
   loading,
+  dataUnavailable,
   onAddWallet,
   onViewWallets,
 }: {
@@ -342,6 +564,7 @@ function Dashboard({
   totals: { all: number; spendable: number } | null
   visible: boolean
   loading: boolean
+  dataUnavailable: boolean
   onAddWallet: () => void
   onViewWallets: () => void
 }) {
@@ -370,12 +593,12 @@ function Dashboard({
         </article>
         <article className="balance-card wallet-count-card">
           <div className="card-label-row"><span className="metric-label">YOUR WALLETS</span><span className="card-icon lavender-icon">↗</span></div>
-          <strong className="balance-amount">{loading ? '…' : wallets.length}</strong>
+          <strong className="balance-amount">{loading ? '…' : dataUnavailable ? '—' : wallets.length}</strong>
           <span className="metric-caption">Places where your pera lives</span>
         </article>
       </section>
 
-      {!totals && !loading && <div className="error-banner" role="alert">A saved wallet amount exceeds the safe calculation range. No total is shown.</div>}
+      {!totals && !loading && !dataUnavailable && <div className="error-banner" role="alert">A saved wallet amount exceeds the safe calculation range. No total is shown.</div>}
 
       <div className="dashboard-grid">
         <section className="panel wallet-panel">
@@ -385,6 +608,8 @@ function Dashboard({
           </div>
           {loading ? (
             <p className="loading-state">Getting your money together…</p>
+          ) : dataUnavailable ? (
+            <p className="error-state">Wallet details could not be loaded. Use the retry action above to try again.</p>
           ) : wallets.length === 0 ? (
             <div className="empty-wallets">
               <span className="empty-icon" aria-hidden="true">▣</span>
@@ -393,7 +618,7 @@ function Dashboard({
             </div>
           ) : (
             <div className="wallet-list">
-              {wallets.slice(0, 4).map((wallet, index) => <WalletRow key={wallet.id} wallet={wallet} visible={visible} index={index} />)}
+              {wallets.slice(0, 4).map((wallet) => <WalletRow key={wallet.id} wallet={wallet} visible={visible} />)}
             </div>
           )}
         </section>
@@ -413,41 +638,89 @@ function Dashboard({
   )
 }
 
-function WalletRow({ wallet, visible, index }: { wallet: Wallet; visible: boolean; index: number }) {
+function WalletRow({
+  wallet,
+  visible,
+  onEdit,
+  onArchive,
+  onRestore,
+}: {
+  wallet: Wallet
+  visible: boolean
+  onEdit?: (wallet: Wallet) => void
+  onArchive?: (wallet: Wallet) => void
+  onRestore?: (wallet: Wallet) => void
+}) {
   return (
     <div className="wallet-row">
-      <span className={`wallet-avatar wallet-color-${index % 4}`} aria-hidden="true">▣</span>
+      <span className={`wallet-avatar wallet-color-${wallet.color}`} aria-hidden="true">{iconGlyphs[wallet.icon]}</span>
       <span className="wallet-info"><strong>{wallet.name}</strong><small>{wallet.type}{wallet.protected ? ' · Protected' : ''}</small></span>
       <strong className="wallet-amount">{visible ? formatPHP(wallet.openingBalanceCentavos) : '₱ ••••••'}</strong>
-      <span className="row-chevron" aria-hidden="true">›</span>
+      {(onEdit || onArchive || onRestore) ? (
+        <div className="wallet-actions">
+          {onEdit && <button className="wallet-action" type="button" onClick={() => onEdit(wallet)} aria-label={`Edit ${wallet.name}`}>Edit</button>}
+          {onArchive && <button className="wallet-action archive-action" type="button" onClick={() => onArchive(wallet)} aria-label={`Archive ${wallet.name}`}>Archive</button>}
+          {onRestore && <button className="wallet-action" type="button" onClick={() => onRestore(wallet)} aria-label={`Restore ${wallet.name}`}>Restore</button>}
+        </div>
+      ) : <span className="row-chevron" aria-hidden="true">›</span>}
     </div>
   )
 }
 
 function WalletsPage({
   wallets,
+  archivedWallets,
   totals,
   visible,
   loading,
+  dataUnavailable,
   onAdd,
+  onEdit,
+  onArchive,
+  onRestore,
 }: {
   wallets: Wallet[]
+  archivedWallets: Wallet[]
   totals: { all: number; spendable: number } | null
   visible: boolean
   loading: boolean
+  dataUnavailable: boolean
   onAdd: () => void
+  onEdit: (wallet: Wallet) => void
+  onArchive: (wallet: Wallet) => void
+  onRestore: (wallet: Wallet) => void
 }) {
   return (
     <>
       <div className="page-heading">
         <div><span className="eyebrow">ALL YOUR PERA, ONE PLACE</span><h1>Wallets</h1><p>Keep tabs on where your money is hanging out.</p></div>
-        <button className="button button-primary add-wallet-button" type="button" onClick={onAdd}>＋ Add wallet</button>
+        <button className="button button-primary add-wallet-button" type="button" onClick={onAdd}><span aria-hidden="true">＋</span> Add wallet</button>
       </div>
       <section className="panel wallets-page-panel">
-        <div className="wallets-summary"><div><span className="metric-label">TOTAL STARTING BALANCE</span><strong>{loading ? '…' : totals ? visible ? formatPHP(totals.all) : '₱ ••••••' : '—'}</strong></div><span>{wallets.length} {wallets.length === 1 ? 'wallet' : 'wallets'}</span></div>
-        {wallets.length === 0 && !loading ? (
+        <div className="wallets-summary"><div><span className="metric-label">TOTAL ACROSS WALLETS</span><strong>{loading ? '…' : totals ? visible ? formatPHP(totals.all) : '₱ ••••••' : '—'}</strong></div><span>{loading ? 'Loading wallets…' : dataUnavailable ? '— active · — archived' : `${wallets.length} active · ${archivedWallets.length} archived`}</span></div>
+        {loading ? (
+          <p className="loading-state">Loading your wallets…</p>
+        ) : dataUnavailable ? (
+          <p className="error-state">Wallet details could not be loaded. Use the retry action above to try again.</p>
+        ) : wallets.length === 0 && archivedWallets.length === 0 ? (
           <div className="empty-page"><span className="empty-icon" aria-hidden="true">▣</span><h2>No wallets yet</h2><p>Add a wallet to see your money in one place.</p><button className="button button-primary" type="button" onClick={onAdd}>＋ Add your first wallet</button></div>
-        ) : <div className="wallet-list">{wallets.map((wallet, index) => <WalletRow key={wallet.id} wallet={wallet} visible={visible} index={index} />)}</div>}
+        ) : (
+          <>
+            {wallets.length > 0 ? (
+              <div className="wallet-list">
+                {wallets.map((wallet) => <WalletRow key={wallet.id} wallet={wallet} visible={visible} onEdit={onEdit} onArchive={onArchive} />)}
+              </div>
+            ) : !loading && <div className="empty-active-wallets"><p>No active wallets. Your archived balances remain in the total.</p><button className="button button-outline" type="button" onClick={onAdd}>＋ Add wallet</button></div>}
+            {archivedWallets.length > 0 && (
+              <section className="archived-wallets" aria-labelledby="archived-wallets-title">
+                <h2 id="archived-wallets-title">Archived wallets</h2>
+                <div className="wallet-list">
+                  {archivedWallets.map((wallet) => <WalletRow key={wallet.id} wallet={wallet} visible={visible} onRestore={onRestore} />)}
+                </div>
+              </section>
+            )}
+          </>
+        )}
       </section>
     </>
   )
