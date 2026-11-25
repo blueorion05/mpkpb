@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.0.0 — Production release
+
+- Updated product, recovery, installation, and development documentation.
+- Refreshes other open app windows after data replacement or changes to PIN settings.
+
+## 0.9.0 — Offline app and QA
+
+- Added an install manifest, app icons, an offline shell, and deferred updates.
+- Split planning, forecast, and tools into separate route bundles.
+- Added browser checks for recovery, PIN, offline writes, and update activation.
+
+## 0.8.0 — Local recovery and privacy
+
+- Added autosave timestamps, manual and safety snapshots, validated JSON backup and restore, CSV exports, and explicit reset.
+- Added a local inactivity PIN gate. IndexedDB schema version 5 remains compatible.
+
+## 0.7.0 — Geng Geng
+
+- Integrated 105 contextual Taglish lines and local humor and profanity settings.
+- Kept warnings and error messages separate from optional humor.
+
 ## 0.6.0 — Financial tools and analytics
 
 - Added a what-if purchase simulator that feeds hypothetical expenses into every forecast scenario without changing ledger data.

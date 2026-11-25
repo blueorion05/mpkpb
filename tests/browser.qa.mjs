@@ -11,6 +11,11 @@ const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png'
 let nextRelease = false
 const server=createServer(async (req,res)=>{
   try {
+    if (req.url === '/seed') {
+      res.setHeader('Content-Type', 'text/html')
+      res.end('<!doctype html><title>Legacy fixture</title>')
+      return
+    }
     const file=join(root,new URL(req.url,'http://localhost').pathname.replace(/^\/$/,'/index.html'))
     res.setHeader('Content-Type',mime[extname(file)]??'text/plain')
     if (req.url === '/sw.js' && nextRelease) {
@@ -141,8 +146,30 @@ try {
   await click('Unlock')
   await wait(has('Offline Wallet'))
   await wait('caches.keys().then(keys => keys.length === 1 && keys[0].endsWith(":qa-next-release"))')
+  await cmd('Emulation.clearDeviceMetricsOverride')
+  await cmd('Page.navigate', {url: 'http://localhost:4187/seed'})
+  await wait('document.title === "Legacy fixture"')
+  await ev(`new Promise((resolve, reject) => {
+    const open = indexedDB.open('mpkpb', 4)
+    open.onupgradeneeded = () => {
+      const time = '2026-01-01T00:00:00Z'
+      open.result.createObjectStore('wallets', {keyPath: 'id'}).add({
+        id: 'legacy-wallet', name: 'Legacy Wallet', type: 'Cash', icon: 'cash', color: 'green',
+        openingBalanceCentavos: 5000, protected: false, archived: false, createdAt: time, updatedAt: time,
+      })
+      open.result.createObjectStore('transactions', {keyPath: 'id'}).add({
+        id: 'legacy-expense', kind: 'expense', walletId: 'legacy-wallet', amountCentavos: 1234,
+        occurredOn: '2026-01-01', description: 'Legacy expense', createdAt: time, updatedAt: time,
+      })
+    }
+    open.onerror = () => reject(open.error)
+    open.onsuccess = () => { open.result.close(); resolve(true) }
+  })`)
+  await cmd('Page.navigate', {url: 'http://localhost:4187/'})
+  await wait(has('Legacy Wallet'))
+  await wait(has('37.66'))
   assert.deepEqual(runtimeErrors,[])
-  console.log('PASS: mobile onboarding, autosave, snapshots, import/restore, PIN, offline writes and reloads, forecast, and safe update activation.')
+  console.log('PASS: mobile onboarding, autosave, snapshots, import/restore, PIN, offline writes and reloads, forecast, safe update activation, and v4 migration.')
 } finally {
   socket?.close()
   browser.kill()

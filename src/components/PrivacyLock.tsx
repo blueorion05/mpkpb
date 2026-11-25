@@ -1,4 +1,5 @@
-﻿import { useEffect, useState, type ReactNode } from 'react'
+import { reloadLocalSession } from '../localSession'
+import { useEffect, useState, type ReactNode } from 'react'
 import { getPreference, savePreference } from '../db/database'
 
 const pinKey = 'privacyPin'
@@ -121,7 +122,7 @@ export function PrivacySettings() {
               const salt = crypto.randomUUID()
               await savePreference(pinKey, salt + ':' + await hashPin(pin, salt))
             }
-            window.location.reload()
+            reloadLocalSession()
           } catch (reason) {
             setError(reason instanceof Error ? reason.message : 'The privacy setting could not be saved.')
             setBusy(false)

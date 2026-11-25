@@ -29,8 +29,8 @@ Database: `mpkpb`, schema version `5`. Stores and indexes are created in Indexed
 | budgets | `id` | User-defined date ranges and expense-category limits |
 | debts | `id` | Debt schedules, optional original transaction links, and settlement history |
 | scheduledEvents | `id` | Expected-income schedules and bill obligations with linked transactions |
-| snapshots | `id` | Reserved for local save history |
-| preferences | `key` | Theme, optional display name, and forecast safety buffer |
+| snapshots | `id` | Manual and pre-restore recovery points |
+| preferences | `key` | Theme, display name, safety buffer, humor settings, autosave timestamp, and local PIN verifier |
 
 Database access stays in `src/db`. Transaction writes validate the referenced wallet(s) and category and commit in one read-write IndexedDB transaction. Updating a wallet's opening balance is rejected after ledger activity; use a signed balance adjustment instead. Future schema changes must increment the database version and use IndexedDB's `onupgradeneeded` migration transaction. Archived wallets remain stored and included in total balance; they are excluded from spendable funds until restored.
 
@@ -66,4 +66,12 @@ Financial amounts are safe integer centavos. Once ledger entries exist, wallet t
 
 ## Privacy
 
-No application backend is present. Financial records use IndexedDB on the user's device. Do not send financial records to remote services. Backup/export and PWA support are future work; browser storage is not a backup.
+No application backend is present. Financial records use IndexedDB on the user's device. Do not send financial records to remote services. Manual snapshots remain in browser storage. JSON backups include source records and settings, with the PIN verifier and snapshot history excluded. CSV exports escape formula-like text for spreadsheet safety.
+
+## Recovery and offline operation
+
+Financial writes stamp the last-save time in the same transaction. Backup reads use a consistent IndexedDB transaction. Restore validates record shapes, unique IDs, wallet and category references, safe balances, and schedule-to-ledger links. Replacement and its safety snapshot commit together. A typed confirmation is required for reset, which clears all stores.
+
+The privacy gate checks a salted PBKDF2 PIN verifier before mounting financial views. It locks on reopen and after five minutes of inactivity. PIN and restore changes refresh other open windows through a same-origin broadcast. Browser storage remains unencrypted.
+
+Vite emits a service worker with a build-specific static resource list. The worker caches the app shell and all emitted routes. Each worker serves its own shell and assets until the next worker activates after all previous clients close. Cache Storage contains static app assets only. Financial data remains in IndexedDB.

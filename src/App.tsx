@@ -1,3 +1,4 @@
+import { localSessionChannel } from './localSession'
 import OfflineStatus from './components/OfflineStatus'
 import DataSafety from './components/DataSafety'
 import { PrivacyGate, PrivacySettings } from './components/PrivacyLock'
@@ -959,7 +960,7 @@ function App() {
               <div>
                 <span className="eyebrow">{isOnboarding ? 'WELCOME TO MPKPB?' : editingWallet ? 'WALLET DETAILS' : 'WALLET SETUP'}</span>
                 <h2 id="dialog-title">{isOnboarding ? 'Let’s give your money a home.' : editingWallet ? 'Edit wallet' : 'Add a wallet'}</h2>
-                <p>{isOnboarding ? 'No account needed. Start with one wallet — skip anytime.' : 'Cash, GCash, savings — whatever keeps your pera.'}</p>
+                <p>{isOnboarding ? 'Your data stays in this browser. Add one wallet to get started, or skip setup.' : 'Cash, GCash, savings — whatever keeps your pera.'}</p>
               </div>
               <button className="icon-button" type="button" aria-label="Close dialog" onClick={() => void closeWalletDialog()}>×</button>
             </div>
@@ -1270,4 +1271,15 @@ function WalletsPage({
   )
 }
 
-export default function PrivateApp() { return <PrivacyGate><App /></PrivacyGate> }
+export default function PrivateApp() {
+  useEffect(() => {
+    if (!('BroadcastChannel' in window)) return
+    const channel = new BroadcastChannel(localSessionChannel)
+    channel.onmessage = (event: MessageEvent<unknown>) => {
+      if (event.data === 'reload') window.location.reload()
+    }
+    return () => channel.close()
+  }, [])
+
+  return <PrivacyGate><App /></PrivacyGate>
+}

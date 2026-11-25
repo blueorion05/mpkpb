@@ -74,25 +74,27 @@
 
 ## Phase 7 — v0.7.0 Geng personality and UI/UX
 
-- [ ] Context-aware Taglish humor engine with at least 100 unique punchlines.
-- [ ] Signature expression, humor/profanity toggles, separate financial warnings.
-- [ ] Polished onboarding, optional isolated demo data, accessible animation and responsive themes.
+- [x] Context-aware Taglish humor engine with at least 100 unique punchlines.
+- [x] Signature expression, humor/profanity toggles, separate financial warnings.
+- [x] Polish onboarding copy and preserve responsive themes and reduced-motion support.
+- [ ] Optional isolated demo data.
 
 ## Phase 8 — v0.8.0 Data safety and privacy
 
-- [ ] Autosave timestamps, manual/safety snapshots, previews, and restoration.
-- [ ] JSON backup/restore with validation/preview, CSV exports, and explicit full reset.
-- [ ] Optional local PIN lock, inactivity locking, verification, limitations, and migration tests.
+- [x] Autosave timestamps, manual/safety snapshots, previews, and restoration.
+- [x] JSON backup/restore with validation/preview, CSV exports, and explicit full reset.
+- [x] Optional local PIN lock, inactivity locking, verification, limitations, and migration tests.
 
 ## Phase 9 — v0.9.0 PWA and comprehensive QA
 
-- [ ] Installable PWA, manifest/icons, offline shell, and safe update handling.
-- [ ] Offline operations, responsive/accessibility/browser persistence testing.
-- [ ] Financial regression and critical workflow E2E tests; performance and cleanup.
-- [ ] Product-spec review against the complete implementation.
+- [x] Installable PWA, manifest/icons, offline shell, and safe update handling.
+- [x] Offline operations, responsive/accessibility/browser persistence testing.
+- [x] Financial regression and critical workflow E2E tests; performance and cleanup.
+- [x] Product-spec review against the complete implementation.
 
 ## Phase 10 — v1.0.0 Production release
 
-- [ ] Final functional, UI/UX, financial integrity, and privacy review.
-- [ ] Update version/docs; final production build, Git commit/tag, GitHub push, and deployment.
+- [x] Final functional, UI/UX, financial integrity, and privacy review.
+- [x] Update the version and docs and verify the final production build locally.
+- [ ] Push the release commit and tag, then verify deployment.
 - [ ] Verify the production site or document the exact authorization blocker and remaining action.

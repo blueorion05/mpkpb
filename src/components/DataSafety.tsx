@@ -1,3 +1,4 @@
+import { reloadLocalSession } from '../localSession'
 import { useEffect, useState } from 'react'
 import {
   createSnapshot, exportBackup, getPreference, listSnapshots, replaceFromBackup,
@@ -113,7 +114,7 @@ export default function DataSafety() {
             <p>Restoring replaces current records and creates a local safety snapshot.</p>
             <button className="button button-primary" onClick={() => void run(async () => {
               await replaceFromBackup(preview)
-              window.location.reload()
+              reloadLocalSession()
             })}>Replace current records</button>
             <button className="text-button" onClick={() => setPreview(undefined)}>Cancel</button>
           </div>
@@ -124,7 +125,7 @@ export default function DataSafety() {
             <label className="field">Type RESET to confirm<input value={resetText} onChange={(event) => setResetText(event.target.value)} /></label>
             <button className="button button-secondary" disabled={resetText !== 'RESET'} onClick={() => void run(async () => {
               await resetLocalData()
-              window.location.reload()
+              reloadLocalSession()
             })}>Delete all local data</button>
             <button className="text-button" onClick={() => setReset(false)}>Cancel</button>
           </div>
