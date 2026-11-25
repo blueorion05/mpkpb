@@ -2,9 +2,10 @@
 
 ## v1.1.0
 
-- Ready for release with dashboard quick add, schedule management, month-end projection, Taglish copy, and 115 optional punchlines.
+- Released with dashboard quick add, schedule management, month-end projection, Taglish copy, and 115 optional punchlines.
 - All 39 tests, lint, type checking, and production build passed. Disposable Edge QA covered onboarding, future record creation, editing and settlement, short mobile dialogs, desktop navigation, themes, backups, PIN, offline use, update activation, and v4-to-v5 migration.
 - Startup planning reads fell from 14 to 6. Initial JavaScript grew from 98.54 KB to 103.95 KB gzip as the dashboard gained the forecast and schedule workflows.
+- Tag v1.1.0 points to 06297a6. Production served the matching JavaScript asset and passed Edge quick add, schedule balance isolation, offline settlement, installability, and offline forecast.
 - Scheduled transfers remain unavailable. Firefox and Safari were outside this browser run.
 
 ## Current status
