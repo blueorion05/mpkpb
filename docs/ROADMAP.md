@@ -96,5 +96,5 @@
 
 - [x] Final functional, UI/UX, financial integrity, and privacy review.
 - [x] Update the version and docs and verify the final production build locally.
-- [ ] Push the release commit and tag, then verify deployment.
-- [ ] Verify the production site or document the exact authorization blocker and remaining action.
+- [x] Push the release commit and tag, then verify deployment.
+- [x] Verify the production site over HTTPS, including browser installability and an offline smoke test.
