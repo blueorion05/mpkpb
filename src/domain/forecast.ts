@@ -429,7 +429,10 @@ function safeDailySpending(
   return safeDaily === Number.MAX_SAFE_INTEGER ? 0 : safeDaily
 }
 
-export function calculateForecast(request: ForecastRequest): readonly ForecastScenarioResult[] {
+export function calculateForecast(
+  request: ForecastRequest,
+  scenarios: readonly ForecastScenario[] = ['conservative', 'expected', 'optimistic'],
+): readonly ForecastScenarioResult[] {
   if (
     !isDateOnly(request.today) ||
     !isDateOnly(request.endOn) ||
@@ -493,7 +496,7 @@ export function calculateForecast(request: ForecastRequest): readonly ForecastSc
       amountCentavos: purchase.amountCentavos,
     })
   }
-  return (['conservative', 'expected', 'optimistic'] as const).map((scenario) =>
+  return scenarios.map((scenario) =>
     forecastScenario(
       scenario,
       allEvents,

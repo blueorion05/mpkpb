@@ -87,3 +87,14 @@ select:focus-visible {
   color: #1c2716;
   background: #d7edbd;
 }
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+html, body, #root {
+  min-height: 100dvh;
+}

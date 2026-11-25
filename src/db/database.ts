@@ -1,3 +1,4 @@
+import { validateCompletedDate } from '../domain/entry.ts'
 import {
   calculateWalletBalances,
   calculateLedgerTotals,
@@ -408,6 +409,7 @@ export async function saveTransaction(entry: LedgerTransaction): Promise<Updated
     throw new Error('The transaction details are invalid. Please review the amount and wallets.')
   }
 
+  validateCompletedDate(entry.occurredOn, localDateOnly())
   const database = await openDatabase()
   const storeNames = ['wallets', 'transactions', 'scheduledEvents', 'debts']
   if (entry.categoryId) storeNames.push('categories')
@@ -1603,4 +1605,25 @@ export async function replaceFromBackup(candidate: LocalBackup, reset = false): 
 export function resetLocalData(): Promise<void> {
   const records = Object.fromEntries(backupStores.map((store) => [store, [] as unknown[]])) as LocalBackup['records']
   return replaceFromBackup({ format: 'mpkpb', version: 1, createdAt: new Date().toISOString(), records }, true)
+}
+
+export async function getPlanningData() {
+  const database = await openDatabase()
+  const stores = ['budgets', 'debts', 'scheduledEvents', 'wallets', 'transactions', 'categories']
+  const transaction = database.transaction(stores, 'readonly')
+  const [[budgets, debts, schedules, wallets, transactions, categories]] = await Promise.all([
+    Promise.all(stores.map((store) => requestResult<unknown[]>(transaction.objectStore(store).getAll()))),
+    transactionComplete(transaction),
+  ])
+  const expected = schedules.filter(isExpectedIncome)
+  const obligations = schedules.filter(isFinancialObligation)
+  if (expected.length + obligations.length !== schedules.length) {
+    throw new Error('May schedule na hindi mabasa. Walang binago sa records mo.')
+  }
+  return {
+    budgets: validateBudgetPlans(budgets, categories),
+    expected: validateExpectedIncomes(expected, transactions, wallets, categories),
+    debts: validateDebts(debts, transactions, wallets, categories),
+    obligations: validateObligations(obligations, transactions, wallets, categories),
+  }
 }

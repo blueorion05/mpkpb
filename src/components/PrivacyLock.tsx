@@ -56,14 +56,14 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
 
   if (saved === undefined) return (
     <main className="privacy-gate">
-      {error ? <><p role="alert">{error}</p><button onClick={() => { setError(''); setAttempt(attempt + 1) }}>Retry</button></> : <p role="status">Reading privacy settings...</p>}
+      {error ? <><p role="alert">{error}</p><button onClick={() => { setError(''); setAttempt(attempt + 1) }}>Subukan ulit</button></> : <p role="status">Binabasa ang PIN settings…</p>}
     </main>
   )
   if (!locked) return children
 
   return (
     <main className="privacy-gate">
-      <h1>MPKPB? is locked</h1>
+      <h1>Naka-lock ang MPKPB?</h1>
       <form className="wallet-form" onSubmit={async (event) => {
         event.preventDefault()
         const pin = String(new FormData(event.currentTarget).get('pin'))
@@ -71,7 +71,7 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
         setError('')
         try {
           if (await matchesPin(pin, saved)) setLocked(false)
-          else setError('That PIN did not match.')
+          else setError('Hindi tugma ang PIN.')
         } catch {
           setError('The privacy PIN could not be verified.')
         } finally {
@@ -79,7 +79,7 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
         }
       }}>
         <PinField name="pin" label="PIN" />
-        <button className="button button-primary" disabled={busy}>Unlock</button>
+        <button className="button button-primary" disabled={busy}>Buksan</button>
         {error && <p role="alert">{error}</p>}
       </form>
     </main>
@@ -103,8 +103,8 @@ export function PrivacySettings() {
 
   return (
     <section className="geng-settings" aria-labelledby="privacy-title">
-      <h2 id="privacy-title">Privacy lock</h2>
-      <p>A 6 to 12 digit PIN hides the app after five minutes of inactivity or when reopened. Browser storage and downloaded backups remain readable outside this screen.</p>
+      <h2 id="privacy-title">PIN lock</h2>
+      <p>Maglagay ng 6 hanggang 12 digit na PIN. Magla-lock kapag binuksan ulit ang app o hindi nagamit nang limang minuto. Nababasa pa rin ang browser storage at backups sa labas ng app.</p>
       {enabled !== undefined && (
         <form className="wallet-form" onSubmit={async (event) => {
           event.preventDefault()
@@ -115,10 +115,10 @@ export function PrivacySettings() {
           try {
             const saved = await getPreference(pinKey)
             if (saved) {
-              if (!await matchesPin(pin, saved)) throw new Error('That PIN did not match.')
+              if (!await matchesPin(pin, saved)) throw new Error('Hindi tugma ang PIN.')
               await savePreference(pinKey, '')
             } else {
-              if (pin !== form.get('confirm')) throw new Error('The PIN entries must match.')
+              if (pin !== form.get('confirm')) throw new Error('Dapat magkapareho ang PIN.')
               const salt = crypto.randomUUID()
               await savePreference(pinKey, salt + ':' + await hashPin(pin, salt))
             }
@@ -131,9 +131,9 @@ export function PrivacySettings() {
           <PinField name="pin" label={enabled ? 'Current PIN' : 'New PIN'} />
           {!enabled && <PinField name="confirm" label="Confirm PIN" />}
           <div className="form-row">
-            <button className="button button-secondary" disabled={busy}>{enabled ? 'Remove PIN' : 'Enable PIN'}</button>
+            <button className="button button-secondary" disabled={busy}>{enabled ? 'Alisin ang PIN' : 'I-on ang PIN'}</button>
             {enabled && <button className="button button-secondary" type="button" disabled={busy}
-              onClick={() => window.location.reload()}>Lock now</button>}
+              onClick={() => window.location.reload()}>I-lock ngayon</button>}
           </div>
         </form>
       )}

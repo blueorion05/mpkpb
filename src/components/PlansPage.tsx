@@ -237,8 +237,8 @@ function PlansPage({
     <>
       <div className="page-heading plans-heading">
         <div>
-          <span className="eyebrow">PLAN YOUR PERA</span>
-          <h1>Plans</h1>
+
+          <h1>Budget at schedule</h1>
           <p>Give every plan a date range. Actual balances only change when money is posted.</p>
         </div>
         {activeTab !== 'debts' && (
@@ -270,7 +270,7 @@ function PlansPage({
           className={activeTab === 'income' ? 'selected' : ''}
           type="button"
           onClick={() => setActiveTab('income')}
-        >Expected income</button>
+        >Paparating na pera</button>
         <button
           id="plans-debts-tab"
           role="tab"
@@ -279,7 +279,7 @@ function PlansPage({
           className={activeTab === 'debts' ? 'selected' : ''}
           type="button"
           onClick={() => setActiveTab('debts')}
-        >Debts &amp; bills</button>
+        >Mga utang at bayarin</button>
         {activeTab !== 'debts' && (
           <label className="plans-archived-toggle">
             <input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} />
@@ -291,7 +291,7 @@ function PlansPage({
       {pageError && <div className="error-banner" role="alert">{pageError}</div>}
       {dataUnavailable ? (
         <div className="empty-page plans-empty">
-          <h2>Plans are unavailable</h2>
+          <h2>Hindi mabasa ang budget at schedule</h2>
           <p>Saved planning data could not be verified. Your wallet and transaction records were not changed.</p>
         </div>
       ) : loading ? (
@@ -301,7 +301,7 @@ function PlansPage({
           {budgetCards.length === 0 ? (
             <div className="empty-page plans-empty">
               <span className="empty-icon" aria-hidden="true">▤</span>
-              <h2>{includeArchived ? 'No budget plans yet' : 'Make room for what matters'}</h2>
+              <h2>{includeArchived ? 'No budget plans yet' : 'Wala pang budget plan'}</h2>
               <p>Create a plan for a custom date range, then set limits for the expense categories you want to track.</p>
               <button className="button button-primary" type="button" onClick={() => setEditingBudget(null)}>＋ Create a budget</button>
             </div>
@@ -366,8 +366,8 @@ function PlansPage({
           {visibleIncomes.length === 0 ? (
             <div className="empty-page plans-empty">
               <span className="empty-icon" aria-hidden="true">↙</span>
-              <h2>Know what money is on the way</h2>
-              <p>Schedule expected income, choose how confident you are, and track partial or full receipts.</p>
+              <h2>Wala pang paparating na pera</h2>
+              <p>I-schedule ang paparating na pera at i-record kapag nakuha mo na, buo man o kulang.</p>
               <button className="button button-primary" type="button" onClick={() => setEditingIncome(null)}>＋ Schedule expected income</button>
             </div>
           ) : visibleIncomes.map((expected) => {
@@ -389,7 +389,7 @@ function PlansPage({
                   <div className="plan-actions">
                     {!expected.archived && <button className="wallet-action" type="button" onClick={() => setEditingIncome(expected)}>Edit</button>}
                     {!expected.archived && progress && progress.remainingCentavos > 0 && (
-                      <button className="wallet-action" type="button" onClick={() => setReceivingIncome(expected)}>Record receipt</button>
+                      <button className="wallet-action" type="button" onClick={() => setReceivingIncome(expected)}>Nakuha na</button>
                     )}
                     {!expected.archived && <button className="wallet-action archive-action" type="button" onClick={() => setArchiveTarget({ type: 'income', value: expected })}>Archive</button>}
                   </div>
@@ -475,11 +475,11 @@ function PlansPage({
           <section ref={archiveDialogRef} className="wallet-dialog" role="dialog" aria-modal="true" aria-labelledby="archive-plan-title">
             <div className="dialog-heading">
               <div>
-                <span className="eyebrow">KEEPING YOUR HISTORY</span>
+
                 <h2 id="archive-plan-title">Archive this {archiveTarget.type === 'budget' ? 'budget' : 'income schedule'}?</h2>
                 <p>It will leave your active list, but its saved history stays on this device.</p>
               </div>
-              <button className="icon-button" type="button" aria-label="Close dialog" onClick={() => setArchiveTarget(null)}>×</button>
+              <button className="icon-button" type="button" aria-label="Isara" onClick={() => setArchiveTarget(null)}>×</button>
             </div>
             <div className="dialog-actions">
               <button className="button button-secondary" type="button" onClick={() => setArchiveTarget(null)}>Keep active</button>
@@ -569,7 +569,7 @@ function BudgetPlanDialog({ plan, categories, onClose, onSave, onCreateCategory 
             <h2 id="budget-dialog-title">{plan ? 'Edit budget plan' : 'New budget plan'}</h2>
             <p>Limits track categorized expenses in this date range. They never change your actual balance.</p>
           </div>
-          <button className="icon-button" type="button" aria-label="Close dialog" onClick={onClose} disabled={saving}>×</button>
+          <button className="icon-button" type="button" aria-label="Isara" onClick={onClose} disabled={saving}>×</button>
         </div>
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <label className="field"><span>Plan name</span><input autoFocus name="name" required maxLength={50} defaultValue={plan?.name ?? ''} placeholder="e.g. June essentials" /></label>
@@ -681,23 +681,23 @@ function ExpectedIncomeDialog({ expected, wallets, categories, onClose, onSave }
         <div className="dialog-heading">
           <div>
             <span className="eyebrow">{expected ? 'UPDATE EXPECTED INCOME' : 'MONEY ON THE WAY'}</span>
-            <h2 id="income-dialog-title">{expected ? 'Edit income schedule' : 'Schedule expected income'}</h2>
+            <h2 id="income-dialog-title">{expected ? 'Edit paparating na pera' : 'I-schedule ang paparating na pera'}</h2>
             <p>Planned income stays separate from your current balance until a receipt is posted.</p>
           </div>
-          <button className="icon-button" type="button" aria-label="Close dialog" onClick={onClose} disabled={saving}>×</button>
+          <button className="icon-button" type="button" aria-label="Isara" onClick={onClose} disabled={saving}>×</button>
         </div>
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <label className="field"><span>Description</span><input autoFocus name="description" required maxLength={120} defaultValue={expected?.description ?? ''} placeholder="e.g. Salary" /></label>
           <div className="form-row">
             <label className="field"><span>Expected amount</span><span className="currency-input"><b>₱</b><input name="amount" inputMode="decimal" required defaultValue={expected ? amountInputValue(expected.amountCentavos) : ''} placeholder="0.00" /></span></label>
-            <label className="field"><span>Due date</span><input name="dueOn" type="date" required defaultValue={expected?.dueOn ?? localDateInput()} disabled={Boolean(expected?.receipts.length)} /></label>
+            <label className="field"><span>Kailan due?</span><input name="dueOn" type="date" required defaultValue={expected?.dueOn ?? localDateInput()} disabled={Boolean(expected?.receipts.length)} /></label>
           </div>
           <div className="form-row">
             <label className="field"><span>Wallet</span><select name="walletId" required defaultValue={expected?.walletId ?? selectableWallets[0]?.id ?? ''}>
               {selectableWallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}{wallet.archived ? ' (archived)' : ''}</option>)}
             </select></label>
             <label className="field"><span>Income category <small>optional</small></span><select name="categoryId" defaultValue={expected?.categoryId ?? ''}>
-              <option value="">No category</option>
+              <option value="">Walang category</option>
               {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
             </select></label>
           </div>
@@ -757,11 +757,11 @@ function IncomeReceiptDialog({ expected, onClose, onReceive }: IncomeReceiptDial
       <section ref={dialogRef} className="wallet-dialog planning-dialog" role="dialog" aria-modal="true" aria-labelledby="receipt-dialog-title">
         <div className="dialog-heading">
           <div>
-            <span className="eyebrow">POST ACTUAL INCOME</span>
-            <h2 id="receipt-dialog-title">Record a receipt</h2>
+
+            <h2 id="receipt-dialog-title">Nakuha na ang pera</h2>
             <p>This creates an income transaction in your ledger and updates this schedule together.</p>
           </div>
-          <button className="icon-button" type="button" aria-label="Close dialog" onClick={onClose} disabled={saving}>×</button>
+          <button className="icon-button" type="button" aria-label="Isara" onClick={onClose} disabled={saving}>×</button>
         </div>
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <div className="receipt-remaining"><span>Still expected</span><strong>{formatPHP(progress.remainingCentavos)}</strong></div>
@@ -769,7 +769,7 @@ function IncomeReceiptDialog({ expected, onClose, onReceive }: IncomeReceiptDial
           {error && <p className="form-error" role="alert">{error}</p>}
           <div className="dialog-actions">
             <button className="button button-secondary" type="button" onClick={onClose} disabled={saving}>Cancel</button>
-            <button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Recording…' : 'Record receipt'}</button>
+            <button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Recording…' : 'Nakuha na'}</button>
           </div>
         </form>
       </section>

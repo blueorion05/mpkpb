@@ -1,10 +1,10 @@
+import { entryLabels, ledgerKind, makeSchedule, quickAddKinds, scheduleEntryKind, validateCompletedDate, type EntryKind, type ScheduledRecord } from '../domain/entry'
+import { isRecurrenceFrequency } from '../domain/recurrence'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   isLedgerTransaction,
-  isTransactionKind,
   type LedgerTransaction,
   type TransactionCategory,
-  type TransactionKind,
 } from '../domain/ledger'
 import { formatPHP, parsePesoToCentavos } from '../domain/money'
 import type { Wallet } from '../db/database'
@@ -13,6 +13,9 @@ interface TransactionDialogProps {
   wallets: readonly Wallet[]
   categories: readonly TransactionCategory[]
   editingTransaction: LedgerTransaction | null
+  editingSchedule?: ScheduledRecord
+  lastWalletId?: string
+  onSchedule: (record: ScheduledRecord) => Promise<void>
   onClose: () => void
   onSave: (transaction: LedgerTransaction) => Promise<void>
   onCreateCategory: (name: string, kind: 'income' | 'expense') => Promise<TransactionCategory>
@@ -27,18 +30,32 @@ export default function TransactionDialog({
   wallets,
   categories,
   editingTransaction,
+  editingSchedule,
+  lastWalletId,
+  onSchedule,
   onClose,
   onSave,
   onCreateCategory,
 }: TransactionDialogProps) {
-  const defaultWalletId = editingTransaction?.walletId ?? wallets.find((wallet) => !wallet.archived)?.id ?? ''
-  const [kind, setKind] = useState<TransactionKind>(editingTransaction?.kind ?? 'expense')
+  const defaultWalletId = editingTransaction?.walletId ?? editingSchedule?.walletId ?? wallets.find((wallet) => !wallet.archived && wallet.id === lastWalletId)?.id ?? wallets.find((wallet) => !wallet.archived)?.id ?? ''
+  const [entryKind, setEntryKind] = useState<EntryKind>(editingSchedule ? scheduleEntryKind(editingSchedule) : editingTransaction?.kind ?? 'expense')
+  const kind = ledgerKind(entryKind)
+  const today = localDateInput()
+  const [date, setDate] = useState(editingSchedule?.dueOn ?? editingTransaction?.occurredOn ?? today)
+  const hasHistory = editingSchedule && (editingSchedule.kind === 'expectedIncome' ? editingSchedule.receipts.length
+    : editingSchedule.kind === 'debt' ? editingSchedule.settlements.length : editingSchedule.payments.length)
+  const canSchedule = !editingTransaction && kind !== 'transfer' && kind !== 'adjustment'
+  const [planOverride, setPlanOverride] = useState<boolean>()
+  const [recurrence, setRecurrence] = useState(editingSchedule?.recurrence ?? 'none')
+  const isDebt = entryKind === 'payable' || entryKind === 'receivable'
+  const planned = canSchedule && (Boolean(editingSchedule) || date > today ||
+    (planOverride ?? ['bill', 'payable', 'receivable'].includes(entryKind)))
   const [walletId, setWalletId] = useState(defaultWalletId)
   const [toWalletId, setToWalletId] = useState(() => {
     if (editingTransaction?.toWalletId) return editingTransaction.toWalletId
     return wallets.find((wallet) => wallet.id !== defaultWalletId && !wallet.archived)?.id ?? ''
   })
-  const [categoryId, setCategoryId] = useState(editingTransaction?.categoryId ?? '')
+  const [categoryId, setCategoryId] = useState(editingTransaction?.categoryId ?? editingSchedule?.categoryId ?? '')
   const [adjustmentDirection, setAdjustmentDirection] = useState(
     editingTransaction?.kind === 'adjustment' && editingTransaction.amountCentavos < 0
       ? 'decrease'
@@ -63,7 +80,7 @@ export default function TransactionDialog({
     ? categories.filter((category) => category.kind === categoryKind)
     : []
   const selectableWallets = wallets.filter((wallet) =>
-    !wallet.archived ||
+    !wallet.archived || wallet.id === editingSchedule?.walletId ||
     (editingTransaction !== null &&
       (wallet.id === editingTransaction.walletId || wallet.id === editingTransaction.toWalletId)),
   )
@@ -75,9 +92,9 @@ export default function TransactionDialog({
         return
       }
       if (event.key !== 'Tab' || !dialogRef.current) return
-      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
-      )
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary',
+      )).filter((element) => element.getClientRects().length > 0)
       if (focusable.length === 0) return
       const first = focusable[0]
       const last = focusable[focusable.length - 1]
@@ -117,26 +134,51 @@ export default function TransactionDialog({
         ? -parsedAmount
         : parsedAmount
     const feeCentavos = kind === 'transfer'
-      ? parsePesoToCentavos(String(formData.get('fee') ?? ''))
+      ? parsePesoToCentavos(String(formData.get('fee') || '0'))
       : null
     const description = String(formData.get('description') ?? '').trim()
-    const occurredOn = String(formData.get('occurredOn') ?? '')
+    const occurredOn = date
 
     if (amountCentavos === null || amountCentavos === 0) {
-      setFormError('Enter an amount greater than ₱0.00 with no more than two decimal places.')
+      setFormError('Maglagay ng amount na higit sa ₱0.00 at hanggang dalawang decimal.')
       return
     }
     if (kind === 'transfer' && (feeCentavos === null || !toWalletId)) {
-      setFormError('Choose a destination wallet and enter a valid transfer fee.')
+      setFormError('Pumili ng ibang wallet at i-check ang transfer fee.')
       return
     }
 
     const now = new Date().toISOString()
+    if (planned) {
+      setSaving(true)
+      try {
+        const confidence = formData.get('confidence')
+        await onSchedule(makeSchedule(entryKind, {
+          id: crypto.randomUUID(),
+          description: description || entryLabels[entryKind],
+          amountCentavos, walletId, categoryId: categoryId || undefined,
+          dueOn: occurredOn, timestamp: now,
+          recurrence,
+          installmentAmountCentavos: parsePesoToCentavos(String(formData.get('installmentAmount') ?? '')) ?? undefined,
+          confidence: confidence === 'low' || confidence === 'medium' ? confidence : 'high',
+        }, editingSchedule))
+      } catch (error) {
+        setFormError(error instanceof Error ? error.message : 'Hindi na-save ang schedule.')
+        setSaving(false)
+      }
+      return
+    }
+    try {
+      validateCompletedDate(occurredOn, today)
+    } catch (error) {
+      setFormError((error as Error).message)
+      return
+    }
     const transaction: LedgerTransaction = {
       id: editingTransaction?.id ?? crypto.randomUUID(),
       kind,
       occurredOn,
-      description: description || (kind === 'income' ? 'Income' : kind === 'expense' ? 'Expense' : kind === 'transfer' ? 'Wallet transfer' : 'Balance adjustment'),
+      description: description || entryLabels[entryKind],
       amountCentavos,
       walletId,
       createdAt: editingTransaction?.createdAt ?? now,
@@ -169,7 +211,7 @@ export default function TransactionDialog({
     }
 
     if (!isLedgerTransaction(transaction)) {
-      setFormError('Review the transaction details. Transfers must use different wallets.')
+      setFormError('I-check ang record. Dapat magkaiba ang wallet sa transfer.')
       return
     }
 
@@ -177,7 +219,7 @@ export default function TransactionDialog({
     try {
       await onSave(transaction)
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'The transaction could not be saved.')
+      setFormError(error instanceof Error ? error.message : 'Hindi na-save ang record. Subukan ulit.')
       setSaving(false)
     }
   }
@@ -195,39 +237,48 @@ export default function TransactionDialog({
       >
         <div className="dialog-heading">
           <div>
-            <span className="eyebrow">{editingTransaction ? 'UPDATE YOUR LEDGER' : 'ADD TO YOUR LEDGER'}</span>
-            <h2 id="transaction-dialog-title">{editingTransaction ? 'Edit transaction' : 'New transaction'}</h2>
-            <p>Saved privately on this device. Every amount is kept in centavos.</p>
+            <h2 id="transaction-dialog-title">{editingTransaction || editingSchedule ? 'Edit record' : 'Add record'}</h2>
           </div>
-          <button className="icon-button" type="button" aria-label="Close dialog" onClick={onClose} disabled={saving}>×</button>
+          <button className="icon-button" type="button" aria-label="Isara" onClick={onClose} disabled={saving}>×</button>
         </div>
         <form className="wallet-form" onSubmit={(event) => void handleSubmit(event)}>
-          <label className="field">
-            <span>Transaction type</span>
-            <select
-              name="kind"
-              value={kind}
-              disabled={Boolean(linkedSchedule)}
-              onChange={(event) => {
-                if (isTransactionKind(event.target.value)) {
-                  setKind(event.target.value)
+          {!editingTransaction && !editingSchedule ? (
+            <div className="quick-choices" role="group" aria-label="Anong idadagdag?">
+              {quickAddKinds.map((choice) => <button key={choice} type="button" className="button button-outline"
+                aria-pressed={entryKind === choice} onClick={() => {
+                  setEntryKind(choice)
                   setCategoryId('')
-                }
-              }}
-            >
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
-              <option value="transfer">Transfer</option>
-              <option value="adjustment">Balance adjustment</option>
-            </select>
+                  setCreatingCategory(false)
+                  setPlanOverride(undefined)
+                  setRecurrence('none')
+                  setFormError('')
+                }}>{entryLabels[choice]}</button>)}
+            </div>
+          ) : editingTransaction && !linkedSchedule ? (
+            <label className="field">Uri ng record
+              <select value={entryKind} onChange={(event) => {
+                setEntryKind(event.target.value as EntryKind)
+                setCategoryId('')
+              }}>
+                {(['expense', 'income', 'transfer', 'adjustment'] as const).map((choice) =>
+                  <option key={choice} value={choice}>{entryLabels[choice]}</option>)}
+              </select>
+            </label>
+          ) : <p className="field-note">{entryLabels[entryKind]}</p>}
+          {Boolean(hasHistory) && <p className="field-note">Naka-lock ang due date at ulit kapag may bayad o receipt na.</p>}
+          <label className="field">
+            <span>Para saan?</span>
+            <input name="description" maxLength={isDebt ? 80 : 120}
+              defaultValue={editingTransaction?.description ?? (editingSchedule?.kind === 'debt' ? editingSchedule.name : editingSchedule?.description) ?? ''}
+              placeholder="Hal. Sahod, merienda, o kuryente" />
           </label>
           {linkedSchedule && (
             <p className="field-note">
               {linkedSchedule === 'income'
-                ? 'This receipt is linked to expected income. Its type stays as income; deleting it reopens the expected amount.'
+                ? 'Konektado ang receipt sa paparating na pera. Pag dinelete mo ito, babalik sa schedule ang amount.'
                 : linkedSchedule === 'debt'
-                  ? 'This entry is linked to a debt settlement. Its type stays fixed; deleting it reopens the settlement amount.'
-                  : 'This entry is linked to a bill payment. Its type stays as an expense; deleting it reopens the amount due.'}
+                  ? 'Konektado ito sa utang. Pag dinelete mo ang record, babalik ang amount na kailangan pang bayaran o kolektahin.'
+                  : 'Konektado ito sa bayarin. Pag dinelete mo ang record, babalik ang amount na due.'}
             </p>
           )}
 
@@ -241,16 +292,31 @@ export default function TransactionDialog({
                   name="amount"
                   inputMode="decimal"
                   required
-                  defaultValue={editingTransaction ? formatPHP(editingTransaction.amountCentavos).replace(/[^\d.]/g, '') : ''}
+                  defaultValue={editingTransaction || editingSchedule ? formatPHP((editingTransaction ?? editingSchedule)!.amountCentavos).replace(/[^\d.]/g, '') : ''}
                   placeholder="0.00"
                 />
               </span>
             </label>
             <label className="field">
               <span>Date</span>
-              <input name="occurredOn" type="date" max={localDateInput()} required defaultValue={editingTransaction?.occurredOn ?? localDateInput()} />
+              <input name="occurredOn" type="date" required disabled={Boolean(hasHistory)} value={date} onChange={(event) => {
+                setDate(event.target.value)
+                setPlanOverride(undefined)
+              }} />
             </label>
           </div>
+
+          {canSchedule && (
+            <label className="field">Status
+              <select value={planned ? 'upcoming' : 'done'} disabled={Boolean(editingSchedule) || date > today}
+                onChange={(event) => setPlanOverride(event.target.value === 'upcoming')}>
+                <option value="upcoming">Upcoming</option>
+                <option value="done">{kind === 'income' ? 'Nakuha na' : 'Bayad na'}</option>
+              </select>
+              {planned && <small>Sa forecast muna ito. Magbabago ang wallet kapag ni-record ang aktwal na bayad o receipt.</small>}
+            </label>
+          )}
+          {!canSchedule && date > today && <p className="field-note">Pumili ng petsa ngayong araw o mas maaga para sa record na ito.</p>}
 
           {kind === 'adjustment' && (
             <label className="field">
@@ -295,6 +361,16 @@ export default function TransactionDialog({
                   ))}
                 </select>
               </label>
+            </>
+          )}
+
+          {(categoryKind || planned || kind === 'transfer' || (!editingTransaction && !editingSchedule)) && (
+            <details className="entry-options">
+              <summary>More options</summary>
+              <div>
+                {!editingTransaction && !editingSchedule && <button className="text-button" type="button"
+                  onClick={() => { setEntryKind('adjustment'); setPlanOverride(undefined) }}>{entryLabels.adjustment}</button>}
+                {kind === 'transfer' && (
               <label className="field">
                 <span>Transfer fee <small>optional</small></span>
                 <span className="currency-input">
@@ -302,20 +378,18 @@ export default function TransactionDialog({
                   <input name="fee" inputMode="decimal" defaultValue={editingTransaction?.feeCentavos !== undefined ? formatPHP(editingTransaction.feeCentavos).replace(/[^\d.]/g, '') : '0.00'} />
                 </span>
               </label>
-            </>
-          )}
-
+                )}
           {categoryKind && (
             <div className="category-field">
               <label className="field">
                 <span>Category <small>optional</small></span>
                 <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
-                  <option value="">Uncategorized</option>
+                  <option value="">Walang category</option>
                   {availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
                 </select>
               </label>
               <button className="text-button" type="button" onClick={() => setCreatingCategory((current) => !current)}>
-                {creatingCategory ? 'Cancel' : '+ New category'}
+                {creatingCategory ? 'Cancel' : '+ Bagong category'}
               </button>
               {creatingCategory && (
                 <div className="inline-category-form">
@@ -330,7 +404,7 @@ export default function TransactionDialog({
                     />
                   </label>
                   <button className="button button-outline" type="button" onClick={() => void handleCategoryCreate()}>
-                    Save category
+                    I-save ang category
                   </button>
                 </div>
               )}
@@ -338,19 +412,41 @@ export default function TransactionDialog({
             </div>
           )}
 
-          <label className="field">
-            <span>Description <small>optional</small></span>
-            <input name="description" maxLength={120} defaultValue={editingTransaction?.description ?? ''} placeholder="What was this for?" />
-          </label>
+                {planned && (
+                  <label className="field">Ulit
+                    <select name="recurrence" disabled={Boolean(hasHistory)} value={recurrence} onChange={(event) => {
+                      if (isRecurrenceFrequency(event.target.value)) setRecurrence(event.target.value)
+                    }}>
+                      <option value="none">Isang beses</option><option value="weekly">Weekly</option>
+                      <option value="biweekly">Every two weeks</option><option value="monthly">Monthly</option>
+                    </select>
+                  </label>
+                )}
+                {planned && isDebt && recurrence !== 'none' && (
+                  <label className="field">Amount kada hulog
+                    <input name="installmentAmount" inputMode="decimal" disabled={Boolean(hasHistory)}
+                      defaultValue={editingSchedule?.kind === 'debt' && editingSchedule.installmentAmountCentavos
+                        ? formatPHP(editingSchedule.installmentAmountCentavos).replace(/[^\d.]/g, '') : ''} />
+                  </label>
+                )}
+                {planned && entryKind === 'income' && (
+                  <label className="field">Gaano kasigurado?
+                    <select name="confidence" defaultValue={editingSchedule?.kind === 'expectedIncome' ? editingSchedule.confidence : 'high'}>
+                      <option value="high">Sigurado</option><option value="medium">Malamang</option><option value="low">Posible</option>
+                    </select>
+                  </label>
+                )}
+              </div>
+            </details>
+          )}
 
           {formError && <p className="form-error" role="alert">{formError}</p>}
           <div className="dialog-actions">
             <button className="button button-quiet" type="button" onClick={onClose} disabled={saving}>Cancel</button>
             <button className="button button-primary" type="submit" disabled={saving || !wallets.length}>
-              {saving ? 'Saving…' : editingTransaction ? 'Save changes' : 'Save transaction'}
+              {saving ? 'Sine-save…' : 'I-save ang record'}
             </button>
           </div>
-          <p className="form-privacy">⌑ All financial data stays on this device.</p>
         </form>
       </section>
     </div>

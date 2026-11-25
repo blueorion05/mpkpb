@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0 — Quick add, upcoming payments, and Taglish
+
+- Added dashboard quick add for income, gastos, transfers, bills, and both directions of debt. Future entries reuse the existing income, bill, and debt schedules.
+- Added a month-end outlook and dashboard schedule editing and settlement with an explicit actual payment date.
+- Updated everyday copy to Taglish and expanded the geng and youngstunna humor catalog to 115 lines.
+- Hid scrollbars while retaining scrolling and made the forecast chart fit narrow screens.
+- Batched planning reads and deferred inactive tool calculations. IndexedDB schema v5 remains unchanged.
+
 ## 1.0.0 — Production release
 
 - Updated product, recovery, installation, and development documentation.

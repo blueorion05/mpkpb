@@ -33,9 +33,9 @@ const transactionDateFormatter = new Intl.DateTimeFormat('en-PH', {
 
 const kindLabels: Record<TransactionKind, string> = {
   income: 'Income',
-  expense: 'Expense',
+  expense: 'Gastos',
   transfer: 'Transfer',
-  adjustment: 'Balance adjustment',
+  adjustment: 'Ayusin ang balance',
 }
 
 function transactionAmount(transaction: LedgerTransaction): string {
@@ -74,6 +74,8 @@ export default function ActivityPage({
   const [toDate, setToDate] = useState('')
   const [sort, setSort] = useState<'newest' | 'oldest'>('newest')
 
+  const walletById = useMemo(() => new Map(wallets.map((wallet) => [wallet.id, wallet])), [wallets])
+  const categoryById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories])
   const filteredTransactions = useMemo(
     () => filterAndSortTransactions(transactions, {
       query,
@@ -95,9 +97,9 @@ export default function ActivityPage({
     <>
       <div className="page-heading">
         <div>
-          <span className="eyebrow">YOUR MONEY, ACCOUNTED FOR</span>
-          <h1>Activity</h1>
-          <p>Every peso has a story. Keep the whole picture close.</p>
+
+          <h1>Galaw ng pera</h1>
+          <p>Dito mo makikita ang aktwal na pasok at labas ng pera.</p>
         </div>
         {!loading && !dataUnavailable && transactions.length > 0 && !summary && (
           <div className="error-banner" role="alert">
@@ -105,7 +107,7 @@ export default function ActivityPage({
           </div>
         )}
         <button className="button button-primary add-wallet-button" type="button" onClick={onAdd} disabled={!canAdd}>
-          <span aria-hidden="true">＋</span> Add transaction
+          <span aria-hidden="true">＋</span> Add record
         </button>
       </div>
 
@@ -115,29 +117,33 @@ export default function ActivityPage({
           <strong>{loading ? '…' : summary ? formatPHP(summary.incomeCentavos) : '—'}</strong>
         </article>
         <article className="panel activity-metric">
-          <span className="metric-label">EXPENSES + FEES</span>
+          <span className="metric-label">Gastos at fees</span>
           <strong>{loading ? '…' : summary ? formatPHP(summary.totalExpenseCentavos) : '—'}</strong>
         </article>
         <article className="panel activity-metric">
-          <span className="metric-label">NET CHANGE</span>
+          <span className="metric-label">Pagbabago sa pera</span>
           <strong>{loading ? '…' : netChange === null ? '—' : `${netChange > 0 ? '+' : netChange < 0 ? '−' : ''}${formatPHP(Math.abs(netChange))}`}</strong>
         </article>
       </section>
 
-      <section className="panel activity-panel" aria-label="Transaction history">
+      <section className="panel activity-panel" aria-label="Mga record">
         <div className="panel-heading">
           <div>
-            <span className="eyebrow">LEDGER</span>
-            <h2>Transaction history</h2>
+
+            <h2>Mga record</h2>
           </div>
-          <span className="activity-count">{loading ? 'Loading…' : `${filteredTransactions.length} shown`}</span>
+          <span className="activity-count">{loading ? 'Naglo-load…' : `${filteredTransactions.length} shown`}</span>
         </div>
 
-        <div className="transaction-filters">
+        <div className="transaction-search">
           <label className="field search-field">
-            <span>Search history</span>
-            <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Description, category, wallet" />
+            <span>Hanapin ang record</span>
+            <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Pangalan, category, o wallet" />
           </label>
+        </div>
+        <details className="entry-options activity-options">
+          <summary>Filters at sort</summary>
+          <div className="transaction-filters">
           <label className="field">
             <span>Type</span>
             <select value={kind} onChange={(event) => {
@@ -147,9 +153,9 @@ export default function ActivityPage({
                 setCategoryId('')
               }
             }}>
-              <option value="all">All activity</option>
+              <option value="all">Lahat ng galaw</option>
               <option value="income">Income</option>
-              <option value="expense">Expenses</option>
+              <option value="expense">Gastos</option>
               <option value="transfer">Transfers</option>
               <option value="adjustment">Adjustments</option>
             </select>
@@ -157,14 +163,14 @@ export default function ActivityPage({
           <label className="field">
             <span>Wallet</span>
             <select value={walletId} onChange={(event) => setWalletId(event.target.value)}>
-              <option value="">All wallets</option>
+              <option value="">Lahat ng wallet</option>
               {wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}{wallet.archived ? ' (archived)' : ''}</option>)}
             </select>
           </label>
           <label className="field">
             <span>Category</span>
             <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
-              <option value="">All categories</option>
+              <option value="">Lahat ng category</option>
               {categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
             </select>
           </label>
@@ -187,30 +193,31 @@ export default function ActivityPage({
               <option value="oldest">Oldest first</option>
             </select>
           </label>
-        </div>
+          </div>
+        </details>
 
         {loading ? (
-          <p className="loading-state">Getting your transactions together…</p>
+          <p className="loading-state">Binabasa ang mga record…</p>
         ) : dataUnavailable ? (
-          <p className="error-state">Ledger details could not be loaded. Use the retry action above to try again.</p>
+          <p className="error-state">Hindi mabasa ang mga record. Pindutin ang Subukan ulit.</p>
         ) : transactions.length === 0 ? (
           <div className="empty-page activity-empty">
             <span className="empty-icon" aria-hidden="true">↗</span>
-            <h2>Your ledger starts here</h2>
-            <p>Add income, expenses, transfers, or a balance adjustment. Entries stay on this device.</p>
-            <button className="button button-primary" type="button" onClick={onAdd} disabled={!canAdd}>＋ Add your first transaction</button>
+            <h2>Wala pang galaw ng pera</h2>
+            <p>I-record ang income, gastos, at transfer mo rito.</p>
+            <button className="button button-primary" type="button" onClick={onAdd} disabled={!canAdd}>＋ Add unang record</button>
           </div>
         ) : filteredTransactions.length === 0 ? (
           <div className="empty-page activity-empty">
-            <h2>No matches</h2>
-            <p>Try a different search or adjust your filters.</p>
+            <h2>Walang tugmang record</h2>
+            <p>Ibang search o filter ang subukan mo.</p>
           </div>
         ) : (
           <ul className="transaction-list">
             {filteredTransactions.map((transaction) => {
-              const sourceWallet = wallets.find((wallet) => wallet.id === transaction.walletId)
-              const destinationWallet = wallets.find((wallet) => wallet.id === transaction.toWalletId)
-              const category = categories.find((item) => item.id === transaction.categoryId)
+              const sourceWallet = walletById.get(transaction.walletId)
+              const destinationWallet = walletById.get(transaction.toWalletId ?? '')
+              const category = categoryById.get(transaction.categoryId ?? '')
               return (
                 <li className={`transaction-row transaction-${transaction.kind}`} key={transaction.id}>
                   <span className="transaction-icon" aria-hidden="true">
@@ -227,13 +234,14 @@ export default function ActivityPage({
                         : [
                             sourceWallet?.name,
                             category?.name,
-                            transaction.expectedIncomeId ? 'Scheduled income receipt' : null,
+                            transaction.kind === 'income' ? 'Nakuha na' : transaction.kind === 'expense' ? 'Bayad na' : null,
+                            transaction.expectedIncomeId ? 'Receipt ng naka-schedule na income' : null,
                             transaction.debtSettlementId
                               ? transaction.debtSettlementExcludedFromTotals
-                                ? 'Debt settlement · original transaction already counted'
-                                : 'Debt settlement'
+                                ? 'Bayad sa utang · kasama na ang unang record sa total'
+                                : 'Bayad sa utang'
                               : null,
-                            transaction.obligationId ? 'Bill payment' : null,
+                            transaction.obligationId ? 'Bayad sa bill' : null,
                           ].filter(Boolean).join(' · ')}
                     </small>
                   </div>

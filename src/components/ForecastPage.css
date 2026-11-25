@@ -443,3 +443,15 @@
   }
 }
 
+
+.forecast-chart-wrap {
+  overflow: visible;
+}
+
+.forecast-chart {
+  min-width: 0;
+}
+
+@media (max-width: 600px) {
+  .forecast-axis-label { font-size: 24px; }
+}

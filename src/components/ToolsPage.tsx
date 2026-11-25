@@ -13,7 +13,7 @@ type Theme = 'system' | 'light' | 'dark'
 type Tab = 'calendar' | 'insights' | 'settings'
 const toolTabs: readonly { id: Tab; label: string }[] = [
   { id: 'calendar', label: 'Calendar' },
-  { id: 'insights', label: 'Insights' },
+  { id: 'insights', label: 'Saan napunta?' },
   { id: 'settings', label: 'Settings' },
 ]
 
@@ -76,12 +76,12 @@ const monthFormatter = new Intl.DateTimeFormat('en-PH', {
 })
 
 function reminderDate(event: ForecastEvent, today: string): string {
-  return event.dueOn < today ? `Overdue since ${dateFormatter.format(new Date(`${event.dueOn}T00:00:00.000Z`))}` : `Due ${dateFormatter.format(new Date(`${event.dueOn}T00:00:00.000Z`))}`
+  return event.dueOn < today ? `Lampas na sa due date mula ${dateFormatter.format(new Date(`${event.dueOn}T00:00:00.000Z`))}` : `Due ${dateFormatter.format(new Date(`${event.dueOn}T00:00:00.000Z`))}`
 }
 
 function reminderPriority(reminder: { id: string; detail: string }): number {
   if (reminder.id.startsWith('budget:') && reminder.detail.startsWith('Over budget')) return 0
-  if (reminder.detail.startsWith('Overdue')) return 1
+  if (reminder.detail.startsWith('Lampas na sa due date')) return 1
   if (reminder.id.startsWith('budget:')) return 2
   return 3
 }
@@ -110,14 +110,14 @@ export default function ToolsPage({
   const [budgetFilter, setBudgetFilter] = useState('')
 
   const calendar = useMemo(() => {
-    if (loading || dataUnavailable || wallets.length === 0) {
+    if (tab !== 'calendar' || loading || dataUnavailable || wallets.length === 0) {
       return { items: [] as TimelineItem[], reminders: [] as { id: string; title: string; detail: string; amount: number }[], error: '' }
     }
     if (!calendarFrom || !calendarTo) {
-      return { items: [], reminders: [], error: 'Choose a start and end date for the calendar.' }
+      return { items: [], reminders: [], error: 'Piliin kung kailan magsisimula at matatapos ang calendar.' }
     }
     if (calendarFrom > calendarTo || calendarTo > addDays(today, 3660)) {
-      return { items: [], reminders: [], error: 'Choose a valid date range within the next ten years.' }
+      return { items: [], reminders: [], error: 'Pumili ng mga petsa sa loob ng susunod na sampung taon.' }
     }
     try {
       const forecastEvents = calculateForecast({
@@ -129,14 +129,14 @@ export default function ToolsPage({
         today,
         endOn: calendarTo < today ? today : calendarTo,
         safetyBufferCentavos: 0,
-      }).find((result) => result.scenario === 'optimistic')?.events ?? []
+      }, ['optimistic'])[0]?.events ?? []
       const scheduledItems: TimelineItem[] = forecastEvents
         .filter((event) => event.projectedOn >= calendarFrom && event.projectedOn <= calendarTo)
         .map((event) => ({
           id: `scheduled:${event.id}`,
           date: event.projectedOn,
           title: event.label,
-          detail: `${event.kind === 'expectedIncome' ? 'Expected income' : event.kind === 'debt' ? 'Debt settlement' : 'Bill or obligation'} · ${reminderDate(event, today)}`,
+          detail: `${event.kind === 'expectedIncome' ? 'Paparating na pera' : event.kind === 'debt' ? 'Debt settlement' : 'Bill or obligation'} · ${reminderDate(event, today)}`,
           kind: event.kind,
           amountCentavos: event.amountCentavos,
           direction: event.direction,
@@ -151,7 +151,7 @@ export default function ToolsPage({
           title: transaction.description,
           detail: transaction.kind === 'transfer'
             ? `Transfer · ${walletNames.get(transaction.walletId) ?? 'Wallet'} → ${walletNames.get(transaction.toWalletId ?? '') ?? 'Wallet'}${transaction.feeCentavos ? ` · fee ${formatPHP(transaction.feeCentavos)}` : ''}`
-            : `${transaction.kind === 'adjustment' ? 'Balance adjustment' : transaction.kind} · ${walletNames.get(transaction.walletId) ?? 'Wallet'}`,
+            : `${transaction.kind === 'adjustment' ? 'Ayusin ang balance' : transaction.kind} · ${walletNames.get(transaction.walletId) ?? 'Wallet'}`,
           kind: transaction.kind,
           amountCentavos: transaction.amountCentavos,
           direction: transaction.kind === 'income'
@@ -200,7 +200,7 @@ export default function ToolsPage({
         error: error instanceof Error ? error.message : 'The calendar could not be calculated.',
       }
     }
-  }, [wallets, transactions, expectedIncomes, debts, obligations, budgetPlans, categories, loading, dataUnavailable, today, calendarFrom, calendarTo])
+  }, [tab, wallets, transactions, expectedIncomes, debts, obligations, budgetPlans, categories, loading, dataUnavailable, today, calendarFrom, calendarTo])
 
   const analyticsFrom = analyticsRange === 'custom'
     ? customFrom
@@ -213,7 +213,8 @@ export default function ToolsPage({
     ? budgetFilter
     : ''
   const analytics = useMemo(() => {
-    if (loading || dataUnavailable) {
+
+    if (tab !== 'insights' || loading || dataUnavailable) {
       return { result: null, walletTotals: [], budgetResults: [], debtResults: [], error: '' }
     }
     try {
@@ -244,15 +245,15 @@ export default function ToolsPage({
         error: error instanceof Error ? error.message : 'Your insights could not be calculated.',
       }
     }
-  }, [transactions, categories, wallets, budgetPlans, debts, loading, dataUnavailable, analyticsFrom, analyticsTo, today, activeBudgetFilter])
+  }, [tab, transactions, categories, wallets, budgetPlans, debts, loading, dataUnavailable, analyticsFrom, analyticsTo, today, activeBudgetFilter])
 
   return (
     <>
       <div className="page-heading">
         <div>
-          <span className="eyebrow">TOOLS FOR THE MONEY PLOT</span>
-          <h1>More</h1>
-          <p>Upcoming money moments, useful patterns, and app settings.</p>
+
+          <h1>Iba pa</h1>
+          <p>Tingnan ang calendar, gastos, at settings mo.</p>
         </div>
       </div>
       <div className="tools-tabs" role="tablist" aria-label="More sections">
@@ -297,15 +298,15 @@ export default function ToolsPage({
           {loading ? <p className="loading-state">Gathering your money dates…</p> : dataUnavailable ? <p className="error-state">Planning data is unavailable. Retry loading local data before viewing this calendar.</p> : calendar.error ? <p className="error-state" role="alert">{calendar.error}</p> : (
             <>
               <section className="panel reminder-panel" aria-label="In-app reminders">
-                <div className="tools-panel-heading"><div><span className="eyebrow">A GENTLE HEADS-UP</span><h2>Reminders</h2></div><span className="tools-count">{calendar.reminders.length}</span></div>
+                <div className="tools-panel-heading"><div><h2>Reminders</h2></div><span className="tools-count">{calendar.reminders.length}</span></div>
                 {calendar.reminders.length === 0
                   ? <p className="tools-muted">No bills, expected payments, or budget limits need attention this week. Ayos ah.</p>
                   : <ul className="reminder-list">{calendar.reminders.map((item) => <li key={item.id}><span className="reminder-mark" aria-hidden="true">!</span><div><strong>{item.title}</strong><small>{item.detail}</small></div><span className="reminder-amount">{displayAmount(item.amount, visible)}</span></li>)}</ul>}
               </section>
               <section className="panel timeline-panel" aria-label="Upcoming financial timeline">
-                <div className="tools-panel-heading"><div><span className="eyebrow">YOUR MONEY TIMELINE</span><h2>Financial calendar</h2></div><span className="tools-count">{calendar.items.length} events</span></div>
+                <div className="tools-panel-heading"><div><h2>Calendar ng pera</h2></div><span className="tools-count">{calendar.items.length} events</span></div>
                 {calendar.items.length === 0
-                  ? <div className="tools-empty"><h3>Nothing on these dates</h3><p>Transactions and active scheduled income, debt, and bills will appear here.</p></div>
+                  ? <div className="tools-empty"><h3>Walang record sa mga petsang ito</h3><p>Dito lalabas ang mga record at ang mga naka-schedule na pasok at bayad.</p></div>
                   : <ol className="timeline-list">{calendar.items.map((item) => (
                       <li className={`timeline-item${item.overdue ? ' overdue' : ''}`} key={item.id}>
                         <time dateTime={item.date}>{dateFormatter.format(new Date(`${item.date}T00:00:00.000Z`))}</time>
@@ -331,16 +332,16 @@ export default function ToolsPage({
             <label className="field"><span>Budget plan</span><select value={activeBudgetFilter} onChange={(event) => setBudgetFilter(event.target.value)}><option value="">All matching plans</option>{availableBudgets.map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}</select></label>
             <p>Actual ledger activity only; transfers are neutral except for their fees.</p>
           </section>
-          {loading ? <p className="loading-state">Finding the useful patterns…</p> : dataUnavailable ? <p className="error-state">Ledger or planning data is unavailable. Retry loading local data before viewing insights.</p> : analytics.error ? <p className="error-state" role="alert">{analytics.error}</p> : analytics.result && (
+          {loading ? <p className="loading-state">Binabasa ang galaw ng pera…</p> : dataUnavailable ? <p className="error-state">Ledger or planning data is unavailable. Retry loading local data before viewing insights.</p> : analytics.error ? <p className="error-state" role="alert">{analytics.error}</p> : analytics.result && (
             <>
               <section className="analytics-summary" aria-label="Income and expenses">
                 <article className="panel analytics-metric"><span className="metric-label">INCOME</span><strong>{displayAmount(analytics.result.incomeCentavos, visible)}</strong></article>
-                <article className="panel analytics-metric"><span className="metric-label">EXPENSES + FEES</span><strong>{displayAmount(analytics.result.expenseCentavos, visible)}</strong></article>
-                <article className="panel analytics-metric"><span className="metric-label">NET CHANGE</span><strong className={analytics.result.netChangeCentavos < 0 ? 'negative' : 'positive'}>{analytics.result.netChangeCentavos > 0 ? '+' : analytics.result.netChangeCentavos < 0 ? '−' : ''}{displayAmount(Math.abs(analytics.result.netChangeCentavos), visible)}</strong></article>
+                <article className="panel analytics-metric"><span className="metric-label">Gastos at fees</span><strong>{displayAmount(analytics.result.expenseCentavos, visible)}</strong></article>
+                <article className="panel analytics-metric"><span className="metric-label">Pagbabago sa pera</span><strong className={analytics.result.netChangeCentavos < 0 ? 'negative' : 'positive'}>{analytics.result.netChangeCentavos > 0 ? '+' : analytics.result.netChangeCentavos < 0 ? '−' : ''}{displayAmount(Math.abs(analytics.result.netChangeCentavos), visible)}</strong></article>
               </section>
               <section className="analytics-grid">
                 <article className="panel analytics-panel trend-panel">
-                  <div className="tools-panel-heading"><div><span className="eyebrow">CASH FLOW</span><h2>Income vs. expenses</h2></div></div>
+                  <div className="tools-panel-heading"><div><h2>Pumasok at nagastos</h2></div></div>
                   <div className="trend-legend"><span><i className="income-legend" /> Income</span><span><i className="expense-legend" /> Expenses</span></div>
                   {analytics.result.monthlyTrends.map((month) => {
                     const max = Math.max(month.incomeCentavos, month.expenseCentavos, 1)
@@ -351,15 +352,15 @@ export default function ToolsPage({
                 <CategoryBreakdown title="Spending by category" categories={analytics.result.expenseCategories} visible={visible} />
                 <CategoryBreakdown title="Income by category" categories={analytics.result.incomeCategories} visible={visible} />
                 <article className="panel analytics-panel">
-                  <div className="tools-panel-heading"><div><span className="eyebrow">WHERE IT LIVES</span><h2>Wallet distribution</h2></div></div>
+                  <div className="tools-panel-heading"><div><h2>Pera sa bawat wallet</h2></div></div>
                   {analytics.walletTotals?.length ? <ul className="metric-list">{analytics.walletTotals.map((wallet) => <li key={wallet.id}><span><strong>{wallet.name}</strong><small>{wallet.protected ? 'Protected' : wallet.archived ? 'Archived' : 'Spendable'}</small></span><strong>{displayAmount(wallet.amount, visible)}</strong></li>)}</ul> : <p className="tools-muted">Add a wallet to see your distribution.</p>}
                 </article>
                 <article className="panel analytics-panel">
-                  <div className="tools-panel-heading"><div><span className="eyebrow">PLAN CHECK</span><h2>Budget performance</h2></div></div>
+                  <div className="tools-panel-heading"><div><h2>Kumusta ang budget?</h2></div></div>
                   {analytics.budgetResults?.length ? <ul className="budget-performance-list">{analytics.budgetResults.map(({ plan, progress }) => <li key={plan.id}><div className="budget-performance-heading"><strong>{plan.name}</strong><span>{displayAmount(progress.totalSpentCentavos, visible)} / {displayAmount(progress.totalLimitCentavos, visible)}</span></div><div className="budget-performance-track" role="progressbar" aria-label={`${plan.name} budget used`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.round(progress.totalLimitCentavos > 0 ? progress.totalSpentCentavos / progress.totalLimitCentavos * 100 : 0))}><span className={progress.totalSpentCentavos > progress.totalLimitCentavos ? 'over' : ''} style={{ width: `${Math.min(100, progress.totalSpentCentavos / progress.totalLimitCentavos * 100)}%` }} /></div><small>{progress.totalRemainingCentavos < 0 ? `Over by ${displayAmount(Math.abs(progress.totalRemainingCentavos), visible)}` : `${displayAmount(progress.totalRemainingCentavos, visible)} remaining`}</small></li>)}</ul> : <p className="tools-muted">No budget plan overlaps this reporting period.</p>}
                 </article>
                 <article className="panel analytics-panel">
-                  <div className="tools-panel-heading"><div><span className="eyebrow">DEBT CHECK-IN</span><h2>Repayment progress</h2></div></div>
+                  <div className="tools-panel-heading"><div><h2>Bayad at natitirang utang</h2></div></div>
                   {analytics.debtResults?.length ? <ul className="metric-list">{analytics.debtResults.map(({ debt, progress }) => <li key={debt.id}><span><strong>{debt.name}</strong><small>{debt.direction === 'payable' ? 'Money I owe' : 'Money owed to me'} · {progress.status}</small></span><span className="debt-progress-amount">{displayAmount(progress.remainingTotalCentavos, visible)}<small>remaining</small></span></li>)}</ul> : <p className="tools-muted">No active debts to track. One less thing to stress about.</p>}
                   {obligations.filter((item) => !item.archived).length > 0 && <p className="tools-muted">{obligations.filter((item) => !item.archived).length} active bill or expense schedules are tracked in your calendar.</p>}
                 </article>
@@ -373,7 +374,7 @@ export default function ToolsPage({
       {tab === 'settings' && (
         <section id="tools-panel-settings" role="tabpanel" tabIndex={0} aria-labelledby="tools-tab-settings" className="tools-content">
           <section className="panel settings-panel">
-            <div className="settings-title"><span className="card-icon">☼</span><div><h2>Appearance</h2><p>Choose how MPKPB? looks on this device.</p></div></div>
+            <div className="settings-title"><span className="card-icon">☼</span><div><h2>Appearance</h2><p>Piliin ang itsura ng app sa device na ito.</p></div></div>
             <div className="theme-options" role="group" aria-label="Color theme">
               {([
                 { id: 'system', label: 'System', description: 'Follow your device settings', icon: '▣' },
@@ -387,7 +388,7 @@ export default function ToolsPage({
             </div>
           </section>
           <section className="panel about-panel">
-            <span className="card-icon mint-icon">⌑</span><div><h2>Privacy, no drama</h2>            <p>Your financial data is stored in this browser’s IndexedDB. MPKPB? has no financial backend. Clearing site storage removes local data, so keep a separate backup somewhere safe.</p></div>
+            <span className="card-icon mint-icon">⌑</span><div><h2>Privacy ng data</h2>            <p>Sa browser na ito lang naka-save ang pera records mo. Mawawala ang data kapag nilinis ang site storage. Magtabi ng JSON backup.</p></div>
           </section>
         </section>
       )}
@@ -407,7 +408,7 @@ function CategoryBreakdown({
   const maximum = Math.max(1, ...categories.map((category) => category.amountCentavos))
   return (
     <article className="panel analytics-panel">
-      <div className="tools-panel-heading"><div><span className="eyebrow">CATEGORY BREAKDOWN</span><h2>{title}</h2></div></div>
+      <div className="tools-panel-heading"><div><h2>{title}</h2></div></div>
       {categories.length === 0 ? <p className="tools-muted">No categorized activity in this period yet.</p> : <ul className="category-breakdown">{categories.slice(0, 8).map((category) => <li key={category.id}><div><strong>{category.name}</strong><span>{displayAmount(category.amountCentavos, visible)}</span></div><div className="category-track"><span style={{ width: `${category.amountCentavos / maximum * 100}%` }} /></div></li>)}</ul>}
     </article>
   )

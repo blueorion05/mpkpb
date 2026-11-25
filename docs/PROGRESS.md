@@ -1,5 +1,12 @@
 # Progress
 
+## v1.1.0
+
+- Ready for release with dashboard quick add, schedule management, month-end projection, Taglish copy, and 115 optional punchlines.
+- All 39 tests, lint, type checking, and production build passed. Disposable Edge QA covered onboarding, future record creation, editing and settlement, short mobile dialogs, desktop navigation, themes, backups, PIN, offline use, update activation, and v4-to-v5 migration.
+- Startup planning reads fell from 14 to 6. Initial JavaScript grew from 98.54 KB to 103.95 KB gzip as the dashboard gained the forecast and schedule workflows.
+- Scheduled transfers remain unavailable. Firefox and Safari were outside this browser run.
+
 ## Current status
 
 The v1.0.0 production release includes the v0.7 humor integration, v0.8 recovery and PIN, and v0.9 PWA. The historical v0.6.0 tools and analytics are complete. The v0.1.0 foundation through v0.5.0 forecasting are complete. Users can simulate hypothetical purchases without ledger writes, review local upcoming/overdue schedules and in-app reminders, and explore date-filtered cash-flow, category, budget, wallet, and debt insights.

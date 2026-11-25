@@ -98,3 +98,12 @@
 - [x] Update the version and docs and verify the final production build locally.
 - [x] Push the release commit and tag, then verify deployment.
 - [x] Verify the production site over HTTPS, including browser installability and an offline smoke test.
+
+## Phase 11 — v1.1.0 Everyday recording
+
+- [x] Add Taglish navigation, quick add, and month-end forecast to Home.
+- [x] Create, edit, and settle future income, expenses, bills, and debts using existing models.
+- [x] Retain scrolling without visible scrollbars and verify mobile and desktop behavior in Edge.
+- [x] Verify offline operation, safe updates, and existing IndexedDB compatibility.
+- [ ] Run native Firefox and Safari browser checks when those browsers are available.
+- [ ] Model future transfers as paired forecast movements before offering scheduled transfers.

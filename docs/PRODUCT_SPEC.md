@@ -8,16 +8,20 @@ MPKPB? (May Pera Ka Pa Ba?) is a responsive, local-first personal finance app pr
 - Store monetary values as integer centavos and format Philippine pesos using `en-PH`.
 - Make examples customizable and distinguish actual money from projections.
 - Prioritize mobile usability, keyboard access, accessible contrast, and reduced motion.
-- Use English for navigation and financial labels; use contextual Taglish humor sparingly.
+- Use conversational Taglish for navigation and financial labels, with familiar English terms for clarity. Use contextual humor sparingly.
 - Never let humor obscure important financial information.
 
 ## Primary areas
 
-Dashboard, wallets, transactions, budget plans, forecast, debts, insights, save history, and settings. Mobile navigation prioritizes Home, Wallets, Activity, Forecast, Plans, and More.
+Dashboard, wallets, transactions, budget plans, forecast, debts, insights, save history, and settings. Mobile navigation prioritizes Home, Wallets, Galaw, Aabot pa?, Budget, and Iba pa.
 
 ## Financial features
 
 The application provides a responsive application shell, skippable first-run wallet onboarding, customizable wallets, protected funds, theme choice, balance visibility, and local IndexedDB persistence. The ledger supports dated income, expenses, transfers and fees, manual balance adjustments, custom categories, transaction edits/deletion, and searchable/filterable/sortable history. Balances derive from opening balances plus posted ledger deltas. Budget plans have customizable inclusive date ranges and expense-category limits. Expected income records due dates, confidence, and recurrence; receipts create linked posted income transactions. Debts support payable and receivable balances, installments, partial settlement, and optional original-transaction links. Upcoming bills support due dates, recurrence, installments, and partial payments. Forecasts model these schedules chronologically with confidence scenarios, wallet-specific balances, shortage/recovery dates, protected funds, and a safety buffer. The forecast includes a hypothetical-purchase simulator that affects projections only, never the ledger. The More area provides an in-app financial calendar, local reminders for near-term/overdue schedules and budget thresholds, and date-filtered income, expense, category, budget, wallet, and debt insights. See the [roadmap](ROADMAP.md) for remaining verification.
+
+## Everyday recording
+
+The Home dashboard shows actual and spendable balances, money expected and due by month-end, the projected remainder, and any projected shortage. Add record opens the same form for completed activity and future income, gastos, bills, payables, and receivables. Future money stays in schedules until the user records payment or receipt. Users can edit schedules and record early or partial settlement from Home. Transfers and adjustments can be posted through today. Budget matching follows expense category and date.
 
 ## Personality, recovery, and offline access
 

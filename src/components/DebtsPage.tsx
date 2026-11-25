@@ -169,8 +169,8 @@ export default function DebtsPage({
     <>
       <div className="page-heading debts-heading">
         <div>
-          <span className="eyebrow">KEEP THE DUE DATES IN VIEW</span>
-          <h1>Debts &amp; bills</h1>
+
+          <h1>Mga utang at bayarin</h1>
           <p>Track what is owed and what is coming up. Only recorded payments change wallet balances.</p>
         </div>
         <button
@@ -201,7 +201,7 @@ export default function DebtsPage({
             aria-controls="bills-panel"
             className={activeTab === 'bills' ? 'selected' : ''}
             onClick={() => setActiveTab('bills')}
-          >Upcoming bills</button>
+          >Mga babayaran</button>
         </div>
         <label className="archive-toggle">
           <input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} />
@@ -211,7 +211,7 @@ export default function DebtsPage({
       {pageError && (
         <div className="error-banner" role="alert">
           <span>{pageError}</span>
-          <button className="text-button" type="button" onClick={() => setPageError('')}>Dismiss</button>
+          <button className="text-button" type="button" onClick={() => setPageError('')}>Isara</button>
         </div>
       )}
       {activeTab === 'debts' ? (
@@ -219,7 +219,7 @@ export default function DebtsPage({
           {visibleDebts.length === 0 ? (
             <div className="panel plans-empty">
               <span className="empty-icon">↔</span>
-              <h2>{includeArchived ? 'No archived debts' : 'Nothing weighing on the ledger'}</h2>
+              <h2>{includeArchived ? 'No archived debts' : 'Wala pang utang'}</h2>
               <p>Add money you owe or money owed to you, and keep every partial settlement in view.</p>
               {!includeArchived && <button className="button button-primary" type="button" onClick={() => setEditingDebt(null)}>＋ Add a debt</button>}
             </div>
@@ -295,7 +295,7 @@ export default function DebtsPage({
           {visibleObligations.length === 0 ? (
             <div className="panel plans-empty">
               <span className="empty-icon">◷</span>
-              <h2>{includeArchived ? 'No archived bills' : 'No bills on the calendar yet'}</h2>
+              <h2>{includeArchived ? 'No archived bills' : 'Wala pang naka-schedule na bayarin'}</h2>
               <p>Add an upcoming bill or expense to track its due date and partial payments.</p>
               {!includeArchived && <button className="button button-primary" type="button" onClick={() => setEditingObligation(null)}>＋ Add a bill</button>}
             </div>
@@ -323,7 +323,7 @@ export default function DebtsPage({
                           dueOn: progress.dueOn,
                           remaining: progress.remainingThisOccurrenceCentavos,
                         })}
-                      >Record payment</button>
+                      >Bayad na</button>
                     )}
                     {!obligation.archived && <button className="wallet-action archive-action" type="button" onClick={() => void onArchiveObligation(obligation).catch((error: unknown) => setPageError(error instanceof Error ? error.message : 'The bill could not be archived.'))}>Archive</button>}
                   </div>
@@ -477,19 +477,19 @@ function DebtDialog({ debt, wallets, categories, transactions, onClose, onSave }
     <div className="dialog-backdrop">
       <section ref={dialogRef} className="wallet-dialog planning-dialog" role="dialog" aria-modal="true" aria-labelledby="debt-dialog-title">
         <div className="dialog-heading">
-          <div><span className="eyebrow">{debt ? 'UPDATE A DEBT' : 'TRACK A DEBT'}</span><h2 id="debt-dialog-title">{debt ? 'Edit debt' : 'Add a debt'}</h2><p>Settlements change your ledger only when you record them.</p></div>
-          <button className="icon-button" type="button" aria-label="Close dialog" disabled={saving} onClick={onClose}>×</button>
+          <div><span className="eyebrow">{debt ? 'UPDATE A DEBT' : 'TRACK A DEBT'}</span><h2 id="debt-dialog-title">{debt ? 'Edit utang' : 'Add utang'}</h2><p>Magbabago lang ang wallet kapag ni-record mo ang aktwal na bayad.</p></div>
+          <button className="icon-button" type="button" aria-label="Isara" disabled={saving} onClick={onClose}>×</button>
         </div>
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <label className="field"><span>Debt type</span><select name="direction" value={direction} onChange={(event) => setDirection(event.target.value === 'receivable' ? 'receivable' : 'payable')} disabled={hasSettlements}><option value="payable">Money I owe</option><option value="receivable">Money owed to me</option></select></label>
           <label className="field"><span>Description</span><input autoFocus name="name" required maxLength={80} defaultValue={debt?.name ?? ''} placeholder="e.g. Laptop financing" /></label>
           <div className="form-row">
             <label className="field"><span>Total amount</span><span className="currency-input"><b>₱</b><input name="amount" inputMode="decimal" required defaultValue={debt ? amountInputValue(debt.amountCentavos) : ''} placeholder="0.00" /></span></label>
-            <label className="field"><span>First due date</span><input name="dueOn" type="date" required defaultValue={debt?.dueOn ?? todayDateOnly()} disabled={hasSettlements} /></label>
+            <label className="field"><span>Unang due date</span><input name="dueOn" type="date" required defaultValue={debt?.dueOn ?? todayDateOnly()} disabled={hasSettlements} /></label>
           </div>
           <div className="form-row">
             <label className="field"><span>Wallet</span><select name="walletId" required defaultValue={debt?.walletId ?? wallets[0]?.id ?? ''}>{wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}</select></label>
-            <label className="field"><span>Category <small>optional</small></span><select name="categoryId" defaultValue={debt?.categoryId ?? ''}><option value="">No category</option>{selectableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+            <label className="field"><span>Category <small>optional</small></span><select name="categoryId" defaultValue={debt?.categoryId ?? ''}><option value="">Walang category</option>{selectableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
           </div>
           <label className="field"><span>Repeats</span><select value={recurrence} disabled={hasSettlements} onChange={(event) => { if (isRecurrenceFrequency(event.target.value)) setRecurrence(event.target.value) }}>{Object.entries(recurrenceLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           {recurrence !== 'none' && <label className="field"><span>Amount per installment</span><span className="currency-input"><b>₱</b><input name="installmentAmount" inputMode="decimal" required defaultValue={debt?.installmentAmountCentavos ? amountInputValue(debt.installmentAmountCentavos) : ''} placeholder="0.00" disabled={hasSettlements} /></span></label>}
@@ -575,18 +575,18 @@ function ObligationDialog({ obligation, wallets, categories, onClose, onSave }: 
     <div className="dialog-backdrop">
       <section ref={dialogRef} className="wallet-dialog planning-dialog" role="dialog" aria-modal="true" aria-labelledby="bill-dialog-title">
         <div className="dialog-heading">
-          <div><span className="eyebrow">{obligation ? 'UPDATE A BILL' : 'PLAN A PAYMENT'}</span><h2 id="bill-dialog-title">{obligation ? 'Edit bill' : 'Add an upcoming bill'}</h2><p>A planned bill never changes your balance until payment is recorded.</p></div>
-          <button className="icon-button" type="button" aria-label="Close dialog" disabled={saving} onClick={onClose}>×</button>
+          <div><span className="eyebrow">{obligation ? 'UPDATE A BILL' : 'PLAN A PAYMENT'}</span><h2 id="bill-dialog-title">{obligation ? 'Edit bayarin' : 'I-schedule ang bayarin'}</h2><p>Sa forecast muna ang bayarin hanggang ma-record ang bayad.</p></div>
+          <button className="icon-button" type="button" aria-label="Isara" disabled={saving} onClick={onClose}>×</button>
         </div>
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <label className="field"><span>Description</span><input autoFocus name="description" required maxLength={120} defaultValue={obligation?.description ?? ''} placeholder="e.g. Electricity" /></label>
           <div className="form-row">
             <label className="field"><span>Amount per occurrence</span><span className="currency-input"><b>₱</b><input name="amount" inputMode="decimal" required defaultValue={obligation ? amountInputValue(obligation.amountCentavos) : ''} placeholder="0.00" /></span></label>
-            <label className="field"><span>First due date</span><input name="dueOn" type="date" required defaultValue={obligation?.dueOn ?? todayDateOnly()} disabled={hasPayments} /></label>
+            <label className="field"><span>Unang due date</span><input name="dueOn" type="date" required defaultValue={obligation?.dueOn ?? todayDateOnly()} disabled={hasPayments} /></label>
           </div>
           <div className="form-row">
             <label className="field"><span>Wallet</span><select name="walletId" required defaultValue={obligation?.walletId ?? wallets[0]?.id ?? ''}>{wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}</select></label>
-            <label className="field"><span>Expense category <small>optional</small></span><select name="categoryId" defaultValue={obligation?.categoryId ?? ''}><option value="">No category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+            <label className="field"><span>Expense category <small>optional</small></span><select name="categoryId" defaultValue={obligation?.categoryId ?? ''}><option value="">Walang category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
           </div>
           <label className="field"><span>Repeats</span><select value={recurrence} disabled={hasPayments} onChange={(event) => { if (isRecurrenceFrequency(event.target.value)) setRecurrence(event.target.value) }}>{Object.entries(recurrenceLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           {recurrence !== 'none' && (
@@ -629,22 +629,22 @@ function PaymentDialog({ target, onClose, onSave }: PaymentDialogProps) {
     }
   }
   const title = target.kind === 'debt'
-    ? target.item.direction === 'payable' ? 'Record debt payment' : 'Record collection'
+    ? target.item.direction === 'payable' ? 'Record debt payment' : 'Nakuha na'
     : 'Record bill payment'
   const description = target.kind === 'debt' ? target.item.name : target.item.description
   return (
     <div className="dialog-backdrop">
       <section ref={dialogRef} className="wallet-dialog planning-dialog" role="dialog" aria-modal="true" aria-labelledby="payment-dialog-title">
         <div className="dialog-heading">
-          <div><span className="eyebrow">POST TO THE LEDGER</span><h2 id="payment-dialog-title">{title}</h2><p>{description} · Due {displayDate(target.dueOn)}</p></div>
-          <button className="icon-button" type="button" aria-label="Close dialog" disabled={saving} onClick={onClose}>×</button>
+          <div><h2 id="payment-dialog-title">{title}</h2><p>{description} · Due {displayDate(target.dueOn)}</p></div>
+          <button className="icon-button" type="button" aria-label="Isara" disabled={saving} onClick={onClose}>×</button>
         </div>
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <div className="receipt-remaining"><span>Still due</span><strong>{formatPHP(target.remaining)}</strong></div>
           <label className="field"><span>{target.kind === 'debt' ? target.item.direction === 'payable' ? 'Payment amount' : 'Collection amount' : 'Payment amount'}</span><span className="currency-input"><b>₱</b><input autoFocus name="amount" inputMode="decimal" required defaultValue={amountInputValue(target.remaining)} /></span></label>
           <p className="field-note">This creates an {target.kind === 'debt' && target.item.direction === 'receivable' ? 'income' : 'expense'} transaction in your local ledger. Partial amounts are allowed.</p>
           {error && <p className="form-error" role="alert">{error}</p>}
-          <div className="dialog-actions"><button className="button button-outline" type="button" disabled={saving} onClick={onClose}>Cancel</button><button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Record payment'}</button></div>
+          <div className="dialog-actions"><button className="button button-outline" type="button" disabled={saving} onClick={onClose}>Cancel</button><button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Bayad na'}</button></div>
         </form>
       </section>
     </div>

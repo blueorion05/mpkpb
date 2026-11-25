@@ -39,7 +39,7 @@ export default function OfflineStatus({ showReady }: { showReady: boolean }) {
     }
   }, [])
 
-  if (waiting) return <p className="geng-note" role="status">An app update is ready. Finish your changes, close all MPKPB? tabs and app windows, then reopen.</p>
-  if (error) return <p className="geng-note" role="status">Offline setup failed. Reopen the app while online to try again.</p>
-  return offlineReady && showReady ? <p className="geng-note" role="status">Offline access is ready on this device.</p> : null
+  if (waiting) return <p className="geng-note" role="status">Ready na ang update. Tapusin muna ang ginagawa mo, isara lahat ng MPKPB? tabs at windows, tapos buksan ulit.</p>
+  if (error) return <p className="geng-note" role="status">Hindi na-set up ang offline access. Buksan ulit ang app habang online.</p>
+  return offlineReady && showReady ? <p className="geng-note" role="status">Ready na kahit offline ang device.</p> : null
 }

@@ -24,6 +24,16 @@ export interface GengPunchline {
 export const GENG_EXPRESSION = '(ง •̀_•́)ง'
 
 const punchlines: readonly GengPunchline[] = [
+  { context: 'generic', text: 'Ey, what’s good, geng? Silip muna sa mga naka-schedule.', mildProfanity: false },
+  { context: 'generic', text: 'Deserve mo ba talaga o nabudol ka lang?', mildProfanity: false },
+  { context: 'healthy-wallet', text: 'May pera pa, youngstunna. Chill lang sa checkout.', mildProfanity: false },
+  { context: 'tight-wallet', text: 'Youngstunna, lowbat na wallet mo.', mildProfanity: false },
+  { context: 'tight-wallet', text: 'Sardinas muna, geng. Bawi next payday.', mildProfanity: false },
+  { context: 'tight-wallet', text: 'Putek, saan napunta ’yung pera?', mildProfanity: true },
+  { context: 'ledger', text: 'Dito natin malalaman kung ilan talaga ’yung “isang kape lang.”', mildProfanity: false },
+  { context: 'budget', text: 'Budget mo ’yan, geng. Hindi unli rice.', mildProfanity: false },
+  { context: 'forecast', text: 'Baka may plot twist bukas. Silipin muna ’yung due dates.', mildProfanity: false },
+  { context: 'planning', text: 'May due date na? I-record na bago matabunan ng group chat.', mildProfanity: false },
   { context: 'ledger', text: 'May resibo? I-log bago malabhan kasama ng pantalon.', mildProfanity: false },
   { context: 'budget', text: 'May sariling category ang kape. Aba, may department na siya.', mildProfanity: false },
   { context: 'planning', text: 'Nauna ang reminder sa singil. May character development.', mildProfanity: false },
@@ -40,14 +50,14 @@ const punchlines: readonly GengPunchline[] = [
   { context: 'new-wallet', text: 'Nasa isang lugar na ang pera mo. Ikaw na lang ang hinahanap ng budget.', mildProfanity: false },
   { context: 'new-wallet', text: 'Ayos, may wallet na. Hindi na kailangan ng treasure map para hanapin ang cash.', mildProfanity: false },
 
-  { context: 'tight-wallet', text: 'Konting ingat muna, Geng. Yung budget mo naka-tip-toe na.', mildProfanity: false },
+  { context: 'tight-wallet', text: 'Konting ingat muna, geng. Yung budget mo naka-tip-toe na.', mildProfanity: false },
   { context: 'tight-wallet', text: 'Tight ang pera, hindi ang pangarap. Dahan-dahan lang sa checkout.', mildProfanity: false },
   { context: 'tight-wallet', text: 'Bago mag-add to cart, tanungin muna kung need o bored lang.', mildProfanity: false },
   { context: 'tight-wallet', text: 'Maliit ang wiggle room. Pati piso, kailangan mag-file ng leave.', mildProfanity: false },
   { context: 'tight-wallet', text: 'Budget mode muna tayo. Ang sale, babalik; ang pera, sana rin.', mildProfanity: false },
   { context: 'tight-wallet', text: 'Hindi bawal gumastos, pero pa-check muna ng balance bago mag-checkout.', mildProfanity: false },
   { context: 'tight-wallet', text: 'Medyo dikit ang pera. I-delay muna natin ang “deserve ko ’to” speech.', mildProfanity: false },
-  { context: 'tight-wallet', text: 'Kapit sa budget, Geng. Hindi lahat ng free shipping ay free talaga.', mildProfanity: false },
+  { context: 'tight-wallet', text: 'Kapit sa budget, geng. Hindi lahat ng free shipping ay free talaga.', mildProfanity: false },
   { context: 'tight-wallet', text: 'May pera pa, pero ayaw na niyang sumali sa biglaang lakad.', mildProfanity: false },
   { context: 'tight-wallet', text: 'Konting preno muna, shuta ang bilis ng mga gastos minsan.', mildProfanity: true },
 
@@ -62,7 +72,7 @@ const punchlines: readonly GengPunchline[] = [
   { context: 'healthy-wallet', text: 'Okay ang pera mo. Huwag lang mag-open ng shopping app “for research.”', mildProfanity: true },
   { context: 'healthy-wallet', text: 'Ayos ang balance, gagi. Parang may plot armor ang wallet today.', mildProfanity: true },
 
-  { context: 'negative-wallet', text: 'May projected na kulang. Tingnan natin ang dates bago mag-panic, Geng.', mildProfanity: false },
+  { context: 'negative-wallet', text: 'May projected na kulang. Tingnan natin ang dates bago mag-panic, geng.', mildProfanity: false },
   { context: 'negative-wallet', text: 'Heads-up: may wallet na puwedeng sumadsad. Hindi biro ang timing ng bayarin.', mildProfanity: false },
   { context: 'negative-wallet', text: 'Medyo alanganin ang projection. Unahin ang due dates, saka ang luho.', mildProfanity: false },
   { context: 'negative-wallet', text: 'May dip sa forecast. Check natin kung kailan papasok ang susunod na pera.', mildProfanity: false },
@@ -92,7 +102,7 @@ const punchlines: readonly GengPunchline[] = [
   { context: 'ledger', text: 'Resibo today, less “saan napunta?” tomorrow.', mildProfanity: false },
   { context: 'ledger', text: 'Ledger check: receipts don’t lie, pero minsan nakakagulat sila.', mildProfanity: false },
   { context: 'ledger', text: 'Kung may transaction, ilagay na. Baka bukas iba na ang alibi.', mildProfanity: false },
-  { context: 'ledger', text: 'Huwag i-ghost ang gastos, Geng. Lalabas din ’yan sa balance, gagi.', mildProfanity: true },
+  { context: 'ledger', text: 'Huwag i-ghost ang gastos, geng. Lalabas din ’yan sa balance, gagi.', mildProfanity: true },
   { context: 'ledger', text: 'I-log ang fee bago sabihin na “konti lang ’yon.” Putek, centavo rin ’yon.', mildProfanity: true },
 
   { context: 'budget', text: 'Budget limit is a guide, hindi dare. Huwag natin siyang i-speedrun.', mildProfanity: false },
@@ -129,7 +139,7 @@ const punchlines: readonly GengPunchline[] = [
   { context: 'forecast', text: 'Forecast lang ’to, hindi prophecy. Pero putek, mas okay nang handa.', mildProfanity: true },
 
   { context: 'generic', text: 'Pera update: ikaw pa rin ang boss, pero magandang basahin ang memo.', mildProfanity: false },
-  { context: 'generic', text: 'Geng Geng check-in: kumusta ang wallet, at kumusta ang “deserve ko ’to”?', mildProfanity: false },
+  { context: 'generic', text: 'Kumusta ang wallet, at kumusta ang “deserve ko ’to”?', mildProfanity: false },
   { context: 'generic', text: 'Financial wellness, pero walang inspirational stock photo.', mildProfanity: false },
   { context: 'generic', text: 'Ang goal: malinaw na pera, mas kaunting “hala, saan napunta?”', mildProfanity: false },
   { context: 'generic', text: 'Walang perfect budget. Meron lang budget na ina-adjust imbes na iniiwasan.', mildProfanity: false },

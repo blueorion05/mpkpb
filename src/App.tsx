@@ -1,3 +1,6 @@
+import UpcomingList from './components/UpcomingList'
+import type { ScheduledRecord } from './domain/entry'
+import { calculateForecast } from './domain/forecast'
 import { localSessionChannel } from './localSession'
 import OfflineStatus from './components/OfflineStatus'
 import DataSafety from './components/DataSafety'
@@ -12,10 +15,7 @@ import {
   defaultWalletColor,
   defaultWalletIcon,
   getCategories,
-  getBudgetPlans,
-  getDebts,
-  getExpectedIncomes,
-  getObligations,
+  getPlanningData,
   getPreference,
   getTransactions,
   getWallets,
@@ -71,10 +71,10 @@ type Theme = 'system' | 'light' | 'dark'
 const pages: { id: Page; label: string; icon: string }[] = [
   { id: 'home', label: 'Home', icon: '⌂' },
   { id: 'wallets', label: 'Wallets', icon: '▣' },
-  { id: 'activity', label: 'Activity', icon: '↗' },
-  { id: 'forecast', label: 'Forecast', icon: '⌁' },
-  { id: 'plans', label: 'Plans', icon: '▤' },
-  { id: 'more', label: 'More', icon: '•••' },
+  { id: 'activity', label: 'Galaw', icon: '↗' },
+  { id: 'forecast', label: 'Aabot pa?', icon: '⌁' },
+  { id: 'plans', label: 'Budget', icon: '▤' },
+  { id: 'more', label: 'Iba pa', icon: '•••' },
 ]
 const iconLabels: Record<WalletIcon, string> = {
   wallet: 'Wallet',
@@ -157,11 +157,13 @@ function App() {
   const [editingWallet, setEditingWallet] = useState<Wallet | null>(null)
   const [walletToArchive, setWalletToArchive] = useState<Wallet | null>(null)
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false)
+  const [editingSchedule, setEditingSchedule] = useState<ScheduledRecord>()
   const [editingTransaction, setEditingTransaction] = useState<LedgerTransaction | null>(null)
   const [transactionToDelete, setTransactionToDelete] = useState<LedgerTransaction | null>(null)
   const [formError, setFormError] = useState('')
   const [pageError, setPageError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const entryTrigger = useRef<HTMLElement | null>(null)
   const walletDialogRef = useRef<HTMLElement>(null)
   const archiveDialogRef = useRef<HTMLElement>(null)
   const transactionDeleteDialogRef = useRef<HTMLElement>(null)
@@ -213,17 +215,12 @@ function App() {
       }
 
       try {
-        const [savedBudgets, savedExpectedIncomes, savedDebts, savedObligations] = await Promise.all([
-          getBudgetPlans(),
-          getExpectedIncomes(),
-          getDebts(),
-          getObligations(),
-        ])
+        const planning = await getPlanningData()
         if (!active) return
-        setBudgetPlans(savedBudgets)
-        setExpectedIncomes(savedExpectedIncomes)
-        setDebts(savedDebts)
-        setObligations(savedObligations)
+        setBudgetPlans(planning.budgets)
+        setExpectedIncomes(planning.expected)
+        setDebts(planning.debts)
+        setObligations(planning.obligations)
         setPlanningLoadError(false)
       } catch (error) {
         if (active) {
@@ -483,13 +480,24 @@ function App() {
   }
 
   function openTransactionDialog() {
+    entryTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setEditingSchedule(undefined)
     setEditingTransaction(null)
     setTransactionDialogOpen(true)
   }
 
   function openEditTransaction(transaction: LedgerTransaction) {
+    entryTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setEditingSchedule(undefined)
     setEditingTransaction(transaction)
     setTransactionDialogOpen(true)
+  }
+
+  function closeEntry() {
+    setTransactionDialogOpen(false)
+    setEditingTransaction(null)
+    setEditingSchedule(undefined)
+    requestAnimationFrame(() => entryTrigger.current?.focus())
   }
 
   async function handleSaveTransaction(transaction: LedgerTransaction) {
@@ -504,8 +512,7 @@ function App() {
     setSuccessMessage(
       `${transaction.description} ${editingTransaction ? 'updated' : 'saved'} on this device.`,
     )
-    setTransactionDialogOpen(false)
-    setEditingTransaction(null)
+    closeEntry()
   }
 
   async function handleCreateCategory(name: string, kind: 'income' | 'expense') {
@@ -623,12 +630,13 @@ function App() {
     expected: ExpectedIncome,
     amountCentavos: number,
     dueOn: string,
+    actualOn = localDateInput(),
   ) {
     const now = new Date().toISOString()
     const transaction: LedgerTransaction = {
       id: crypto.randomUUID(),
       kind: 'income',
-      occurredOn: localDateInput(),
+      occurredOn: actualOn,
       description: expected.description,
       amountCentavos,
       walletId: expected.walletId,
@@ -641,19 +649,20 @@ function App() {
     const updatedEvent = await saveTransaction(transaction)
     setTransactions((current) => [...current, transaction])
     applyScheduledEventUpdate(updatedEvent)
-    setSuccessMessage(`${formatPHP(amountCentavos)} received and added to your ledger.`)
+    setSuccessMessage(`${formatPHP(amountCentavos)} nakuha na at kasama na sa balance.`)
   }
 
   async function handleSettleDebt(
     debt: DebtRecord,
     amountCentavos: number,
     dueOn: string,
+    actualOn = localDateInput(),
   ) {
     const now = new Date().toISOString()
     const transaction: LedgerTransaction = {
       id: crypto.randomUUID(),
       kind: debt.direction === 'payable' ? 'expense' : 'income',
-      occurredOn: localDateInput(),
+      occurredOn: actualOn,
       description: `${debt.direction === 'payable' ? 'Debt payment' : 'Debt collection'}: ${debt.name}`,
       amountCentavos,
       walletId: debt.walletId,
@@ -667,19 +676,20 @@ function App() {
     const updatedEvent = await saveTransaction(transaction)
     setTransactions((current) => [...current, transaction])
     applyScheduledEventUpdate(updatedEvent)
-    setSuccessMessage(`${formatPHP(amountCentavos)} ${debt.direction === 'payable' ? 'payment' : 'collection'} recorded in your ledger.`)
+    setSuccessMessage(`${formatPHP(amountCentavos)} ${debt.direction === 'payable' ? 'na bayad' : 'na nakolekta'} na-save na.`)
   }
 
   async function handlePayObligation(
     obligation: FinancialObligation,
     amountCentavos: number,
     dueOn: string,
+    actualOn = localDateInput(),
   ) {
     const now = new Date().toISOString()
     const transaction: LedgerTransaction = {
       id: crypto.randomUUID(),
       kind: 'expense',
-      occurredOn: localDateInput(),
+      occurredOn: actualOn,
       description: obligation.description,
       amountCentavos,
       walletId: obligation.walletId,
@@ -692,7 +702,7 @@ function App() {
     const updatedEvent = await saveTransaction(transaction)
     setTransactions((current) => [...current, transaction])
     applyScheduledEventUpdate(updatedEvent)
-    setSuccessMessage(`${formatPHP(amountCentavos)} bill payment recorded in your ledger.`)
+    setSuccessMessage(`${formatPHP(amountCentavos)} na bayad, na-save na.`)
   }
 
   async function handleSaveForecastSafetyBuffer(amountCentavos: number) {
@@ -701,8 +711,60 @@ function App() {
     }
     await savePreference('forecastSafetyBufferCentavos', String(amountCentavos))
     setForecastSafetyBufferCentavos(amountCentavos)
-    setSuccessMessage('Your forecast safety buffer was saved on this device.')
+    setSuccessMessage('Na-save sa device ang reserba mo.')
   }
+
+  async function handleSaveSchedule(record: ScheduledRecord) {
+    if (record.kind === 'expectedIncome') await handleSaveExpectedIncome(record)
+    else if (record.kind === 'obligation') await handleSaveObligation(record)
+    else await handleSaveDebt(record)
+    setSuccessMessage('Na-save sa schedule. Kasama na ito sa forecast.')
+    closeEntry()
+  }
+
+  async function handleSettleSchedule(record: ScheduledRecord, amount: number, dueOn: string, actualOn: string) {
+    if (record.kind === 'expectedIncome') await handleReceiveIncome(record, amount, dueOn, actualOn)
+    else if (record.kind === 'obligation') await handlePayObligation(record, amount, dueOn, actualOn)
+    else await handleSettleDebt(record, amount, dueOn, actualOn)
+  }
+
+  function openEditSchedule(record: ScheduledRecord) {
+    entryTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setEditingTransaction(null)
+    setEditingSchedule(record)
+    setTransactionDialogOpen(true)
+  }
+
+  const today = localDateInput()
+  const endDate = new Date(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0).getDate()
+  const endOn = today.slice(0, 8) + String(endDate).padStart(2, '0')
+  const atHome = page === 'home'
+  const month = useMemo(() => {
+    if (!atHome || loading || walletLoadError || planningLoadError || !wallets.length) return
+    try {
+      const [result] = calculateForecast({
+        wallets, transactions, expectedIncomes, debts, obligations, today, endOn,
+        safetyBufferCentavos: forecastSafetyBufferCentavos,
+      }, ['expected'])
+      const amounts = (direction: 'inflow' | 'outflow') =>
+        sumCentavos(result.events.filter((event) => event.direction === direction).map((event) => event.amountCentavos))
+      return { result, incoming: amounts('inflow'), outgoing: amounts('outflow') }
+    } catch (reason) {
+      return { error: reason instanceof Error ? reason.message : 'Hindi maipakita ang forecast.' }
+    }
+  }, [atHome, loading, walletLoadError, planningLoadError, wallets, transactions, expectedIncomes, debts,
+    obligations, today, endOn, forecastSafetyBufferCentavos])
+
+  const lastWalletId = useMemo(() => {
+    let latest: { walletId: string; updatedAt: string } | undefined
+    const activeIds = new Set(wallets.filter((wallet) => !wallet.archived).map((wallet) => wallet.id))
+    for (const group of [transactions, expectedIncomes, debts, obligations]) {
+      for (const record of group) {
+        if (activeIds.has(record.walletId) && (!latest || latest.updatedAt < record.updatedAt)) latest = record
+      }
+    }
+    return latest?.walletId
+  }, [wallets, transactions, expectedIncomes, debts, obligations])
 
   const currentLabel = pages.find((item) => item.id === page)?.label ?? 'Home'
   const activeWallets = wallets.filter((wallet) => !wallet.archived)
@@ -725,7 +787,9 @@ function App() {
 
   const walletContext: GengContext = !activeWallets.length ? 'new-wallet'
     : balanceVisible && totals && totals.spendable <= 0 ? 'tight-wallet'
-      : activeWallets.some((wallet) => wallet.protected) ? 'saving' : 'generic'
+      : activeWallets.some((wallet) => wallet.protected) ? 'saving'
+        : balanceVisible && month?.result && month.result.minimumSpendableCentavos > 0
+          && month.result.walletSummaries.every((wallet) => !wallet.shortageEpisodes.length) ? 'healthy-wallet' : 'generic'
   const pageContext: Record<Page, GengContext> = {
     home: walletContext, wallets: walletContext, activity: 'ledger', forecast: 'forecast',
     plans: 'planning', more: 'generic',
@@ -733,13 +797,13 @@ function App() {
 
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#main-content">Skip to content</a>
+      <a className="skip-link" href="#main-content">Dumiretso sa content</a>
       <aside className="sidebar">
         <a className="brand" href="#" onClick={() => setPage('home')}>
           <span className="brand-mark">m?</span>
           <span><strong>mpkpb?</strong><small>May Pera Ka Pa Ba?</small></span>
         </a>
-        <p className="nav-caption">MENU</p>
+
         <nav className="side-nav" aria-label="Main navigation">
           {pages.map((item) => (
             <button
@@ -757,25 +821,29 @@ function App() {
         </nav>
         <div className="privacy-card">
           <span className="privacy-lock" aria-hidden="true">⌑</span>
-          <strong>Your money stays yours.</strong>
-          <p>Saved on this device only. No account, no cloud, no chismis.</p>
+          <strong>Dito lang ang data mo.</strong>
+          <p>Sa device na ito lang naka-save. Walang account o cloud.</p>
         </div>
         <div className={`sidebar-status${pageError ? ' status-error' : ''}`}>
-          <span className="status-dot" /> {pageError ? 'Local storage needs attention' : 'Local mode is on'}
+          <span className="status-dot" /> {pageError ? 'Local storage needs attention' : 'Naka-save sa device'}
         </div>
       </aside>
 
       <div className="main-column">
         <header className="topbar">
           <div className="mobile-brand"><span className="brand-mark">m?</span><strong>mpkpb?</strong></div>
-          <div className="breadcrumb"><span>Workspace</span><span aria-hidden="true">›</span><strong>{currentLabel}</strong></div>
+          <div className="breadcrumb"><strong>{currentLabel}</strong></div>
           <div className="top-actions">
             <span className="today-label">{todayLabel}</span>
+            {page !== 'home' && page !== 'activity' && <button className="button button-primary top-quick-add"
+              type="button" disabled={loading || walletLoadError} onClick={activeWallets.length ? openTransactionDialog : openWalletDialog}>
+              {activeWallets.length ? 'Add record' : 'Add wallet'}
+            </button>}
             <button
               className="icon-button"
               type="button"
-              aria-label={balanceVisible ? 'Hide balances' : 'Show balances'}
-              title={balanceVisible ? 'Hide balances' : 'Show balances'}
+              aria-label={balanceVisible ? 'Itago ang balances' : 'Ipakita ang balances'}
+              title={balanceVisible ? 'Itago ang balances' : 'Ipakita ang balances'}
               onClick={() => setBalanceVisible((visible) => !visible)}
             >{balanceVisible ? '◉' : '◎'}</button>
             <button
@@ -804,8 +872,8 @@ function App() {
                   setLoading(true)
                   setLoadAttempt((attempt) => attempt + 1)
                 }}
-              >Retry</button>
-              <button type="button" className="text-button" onClick={() => setPageError('')}>Dismiss</button>
+              >Subukan ulit</button>
+              <button type="button" className="text-button" onClick={() => setPageError('')}>Isara</button>
             </div>
           )}
           {financialDataError && !walletLoadError && (
@@ -816,7 +884,7 @@ function App() {
           {successMessage && (
             <div className="success-banner" role="status">
               <span>{successMessage}</span>
-              <button type="button" className="text-button" onClick={() => setSuccessMessage('')}>Dismiss</button>
+              <button type="button" className="text-button" onClick={() => setSuccessMessage('')}>Isara</button>
             </div>
           )}
           {page === 'home' && (
@@ -831,6 +899,13 @@ function App() {
               loading={loading}
               dataUnavailable={walletLoadError}
               onAddWallet={openWalletDialog}
+              onQuickAdd={openTransactionDialog}
+              month={month}
+              upcoming={!loading && !walletLoadError && !planningLoadError && wallets.length > 0 && (
+                <UpcomingList records={[...expectedIncomes, ...debts, ...obligations]} today={today}
+                  visible={balanceVisible} onEdit={openEditSchedule} onSettle={handleSettleSchedule} />
+              )}
+              onForecast={() => setPage('forecast')}
               onViewWallets={() => setPage('wallets')}
             />
           )}
@@ -863,7 +938,7 @@ function App() {
               onDelete={setTransactionToDelete}
             />
           )}
-          <Suspense fallback={<p role="status">Loading page...</p>}>
+          <Suspense fallback={<p role="status">Binubuksan ang page…</p>}>
           {page === 'forecast' && (
             <ForecastPage
               wallets={wallets}
@@ -959,10 +1034,10 @@ function App() {
             <div className="dialog-heading">
               <div>
                 <span className="eyebrow">{isOnboarding ? 'WELCOME TO MPKPB?' : editingWallet ? 'WALLET DETAILS' : 'WALLET SETUP'}</span>
-                <h2 id="dialog-title">{isOnboarding ? 'Let’s give your money a home.' : editingWallet ? 'Edit wallet' : 'Add a wallet'}</h2>
-                <p>{isOnboarding ? 'Your data stays in this browser. Add one wallet to get started, or skip setup.' : 'Cash, GCash, savings — whatever keeps your pera.'}</p>
+                <h2 id="dialog-title">{isOnboarding ? 'Saan mo nilalagay ang pera mo?' : editingWallet ? 'Edit wallet' : 'Add wallet'}</h2>
+                <p>{isOnboarding ? 'Dito lang sa browser ang data mo. Add ka ng wallet para magsimula, o i-skip muna.' : 'Cash, GCash, bank account, o saan man nakalagay ang pera mo.'}</p>
               </div>
-              <button className="icon-button" type="button" aria-label="Close dialog" onClick={() => void closeWalletDialog()}>×</button>
+              <button className="icon-button" type="button" aria-label="Isara" onClick={() => void closeWalletDialog()}>×</button>
             </div>
             <form className="wallet-form" onSubmit={(event) => void handleSaveWallet(event)}>
               {wallets.length === 0 && !editingWallet && (
@@ -972,7 +1047,7 @@ function App() {
                 </label>
               )}
               <label className="field">
-                <span>Wallet name</span>
+                <span>Pangalan ng wallet</span>
                 <input name="walletName" autoFocus required maxLength={50} defaultValue={editingWallet?.name ?? ''} placeholder="e.g. GCash" />
               </label>
               <div className="form-row">
@@ -1019,7 +1094,7 @@ function App() {
               </div>
               <label className="checkbox-field">
                 <input type="checkbox" name="protected" defaultChecked={editingWallet?.protected ?? false} />
-                <span><strong>Protect this money</strong><small>Exclude it from spendable funds.</small></span>
+                <span><strong>Pera na hindi gagalawin</strong><small>Hiwalay ito sa pwedeng gastusin.</small></span>
               </label>
               {formError && <p className="form-error" role="alert">{formError}</p>}
               <div className="dialog-actions">
@@ -1036,10 +1111,10 @@ function App() {
           wallets={wallets}
           categories={categories}
           editingTransaction={editingTransaction}
-          onClose={() => {
-            setTransactionDialogOpen(false)
-            setEditingTransaction(null)
-          }}
+          editingSchedule={editingSchedule}
+          lastWalletId={lastWalletId}
+          onSchedule={handleSaveSchedule}
+          onClose={closeEntry}
           onSave={handleSaveTransaction}
           onCreateCategory={handleCreateCategory}
         />
@@ -1056,8 +1131,8 @@ function App() {
             aria-labelledby="delete-transaction-title"
             aria-describedby="delete-transaction-description"
           >
-            <span className="eyebrow">LEDGER CHANGE</span>
-            <h2 id="delete-transaction-title">Delete this transaction?</h2>
+
+            <h2 id="delete-transaction-title">Burahin ang record na ito?</h2>
             <p id="delete-transaction-description">
               {transactionToDelete.description} will be removed. Wallet balances will be recalculated from the remaining history.
               {transactionToDelete.expectedIncomeId && ' Its expected-income schedule will reopen the amount.'}
@@ -1068,7 +1143,7 @@ function App() {
             </p>
             <div className="dialog-actions">
               <button className="button button-quiet" type="button" autoFocus onClick={() => setTransactionToDelete(null)}>Keep transaction</button>
-              <button className="button button-danger" type="button" onClick={() => void confirmDeleteTransaction()}>Delete transaction</button>
+              <button className="button button-danger" type="button" onClick={() => void confirmDeleteTransaction()}>Burahin ang record</button>
             </div>
           </section>
         </div>
@@ -1078,9 +1153,9 @@ function App() {
           if (event.target === event.currentTarget) setWalletToArchive(null)
         }}>
           <section ref={archiveDialogRef} className="wallet-dialog confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="archive-title" aria-describedby="archive-description">
-            <span className="eyebrow">KEEPING THINGS TIDY</span>
+
             <h2 id="archive-title">Archive {walletToArchive.name}?</h2>
-            <p id="archive-description">It will leave your active list and spendable total, but stay saved and included in your total balance. You can restore it later.</p>
+            <p id="archive-description">Mawawala ito sa active na listahan at sa pwedeng gastusin. Kasama pa rin ang wallet sa total at pwede mong ibalik.</p>
             <div className="dialog-actions">
               <button className="button button-quiet" type="button" autoFocus onClick={() => setWalletToArchive(null)}>Keep wallet</button>
               <button className="button button-danger" type="button" onClick={() => void confirmArchiveWallet()}>Archive wallet</button>
@@ -1103,6 +1178,10 @@ function Dashboard({
   dataUnavailable,
   onAddWallet,
   onViewWallets,
+  onQuickAdd,
+  onForecast,
+  month,
+  upcoming,
 }: {
   gengMessage?: string
   displayName: string
@@ -1114,51 +1193,72 @@ function Dashboard({
   dataUnavailable: boolean
   onAddWallet: () => void
   onViewWallets: () => void
+  onQuickAdd: () => void
+  onForecast: () => void
+  upcoming: import('react').ReactNode
+  month?: { result?: ReturnType<typeof calculateForecast>[number]; incoming?: number; outgoing?: number; error?: string }
 }) {
+  const money = (amount: number | undefined) => amount === undefined ? '—' : visible ? formatPHP(amount) : '••••'
+  const shortage = month?.result?.spendableShortageEpisodes[0]
+  const walletShortage = month?.result?.walletSummaries.flatMap((wallet) => wallet.shortageEpisodes)
+    .sort((a, b) => a.startOn.localeCompare(b.startOn))[0]
+  const shortageDate = [shortage?.startOn, walletShortage?.startOn].filter(Boolean).sort()[0]
+
   return (
     <>
       <div className="page-heading">
         <div>
-          <span className="eyebrow">YOUR MONEY, YOUR CALL</span>
-          <h1>Hey, {displayName || 'there'}<span className="green-dot">.</span></h1>
-          <p>Here’s the real talk on your money today.</p>
+          <h1>Kumusta{displayName ? ', ' + displayName : ''}<span className="green-dot">.</span></h1>
+          <p>Eto ang pera mo ngayon at ang paparating ngayong buwan.</p>
         </div>
-        <button className="button button-primary add-wallet-button" type="button" onClick={onAddWallet}>
-          <span aria-hidden="true">＋</span> Add wallet
+        <button className="button button-primary add-wallet-button" type="button" onClick={wallets.length ? onQuickAdd : onAddWallet} disabled={loading || dataUnavailable}>
+          <span aria-hidden="true">＋</span> {wallets.length ? 'Add record' : 'Add wallet'}
         </button>
       </div>
       <section className="balance-grid" aria-label="Balance overview">
         <article className="balance-card primary-card">
-          <div className="card-label-row"><span className="metric-label">TOTAL BALANCE</span><span className="card-icon">▣</span></div>
+          <div className="card-label-row"><span className="metric-label">Pera mo ngayon</span><span className="card-icon">▣</span></div>
           <strong className="balance-amount">{loading ? '…' : totals ? visible ? formatPHP(totals.all) : '₱ ••••••' : '—'}</strong>
-          <span className="metric-caption">Across all wallets <span className="actual-badge">ACTUAL</span></span>
+          <span className="metric-caption">Kasama lahat ng wallet</span>
         </article>
         <article className="balance-card">
-          <div className="card-label-row"><span className="metric-label">SPENDABLE</span><span className="card-icon mint-icon">✳</span></div>
+          <div className="card-label-row"><span className="metric-label">Pwedeng gastusin</span><span className="card-icon mint-icon">✳</span></div>
           <strong className="balance-amount">{loading ? '…' : totals ? visible ? formatPHP(totals.spendable) : '₱ ••••••' : '—'}</strong>
-          <span className="metric-caption">Protected funds excluded</span>
-        </article>
-        <article className="balance-card wallet-count-card">
-          <div className="card-label-row"><span className="metric-label">YOUR WALLETS</span><span className="card-icon lavender-icon">↗</span></div>
-          <strong className="balance-amount">{loading ? '…' : dataUnavailable ? '—' : wallets.length}</strong>
-          <span className="metric-caption">Places where your pera lives</span>
+          <span className="metric-caption">Hiwalay ang pera na hindi gagalawin</span>
         </article>
       </section>
 
-      <div className="dashboard-grid">
+      <section className="panel upcoming-panel" aria-label="Tantiya hanggang katapusan">
+        <div className="panel-heading"><h2>Aabot ba hanggang katapusan?</h2>
+          <button className="text-button" type="button" onClick={onForecast}>Tingnan ang forecast</button>
+        </div>
+        {month?.error && <p role="alert">{month.error}</p>}
+        {!month?.error && <>
+          <dl className="month-summary">
+            <div><dt>Paparating na pera</dt><dd>{money(month?.incoming)}</dd></div>
+            <div><dt>Mga babayaran</dt><dd>{money(month?.outgoing)}</dd></div>
+            <div><dt>Matitira sa'yo</dt><dd>{money(month?.result?.endingTotalCentavos)}</dd></div>
+          </dl>
+          {shortageDate ? <p className="form-error" role="status">Kukulangin ang spendable na pera o isang wallet simula {shortageDate}.</p>
+            : month?.result && <p>Sa projection, kasya hanggang katapusan base sa mga naka-schedule.</p>}
+        </>}
+      </section>
+      {upcoming}
+      {gengMessage && <p className="geng-note"><span aria-hidden="true">{GENG_EXPRESSION}</span> {gengMessage}</p>}
+      <div>
         <section className="panel wallet-panel">
           <div className="panel-heading">
-            <div><span className="eyebrow">THE BREAKDOWN</span><h2>Your wallets</h2></div>
+            <div><h2>Mga wallet mo</h2></div>
             {wallets.length > 0 && <button className="link-button" type="button" onClick={onViewWallets}>View all ›</button>}
           </div>
           {loading ? (
-            <p className="loading-state">Getting your money together…</p>
+            <p className="loading-state">Binabasa ang wallet mo…</p>
           ) : dataUnavailable ? (
             <p className="error-state">Wallet details could not be loaded. Use the retry action above to try again.</p>
           ) : wallets.length === 0 ? (
             <div className="empty-wallets">
               <span className="empty-icon" aria-hidden="true">▣</span>
-              <div><strong>Your wallets are waiting for an intro.</strong><p>Add your cash, GCash, or bank account to see everything in one place.</p></div>
+              <div><strong>Wala pang wallet.</strong><p>Ilagay ang cash, GCash, o bank account na gusto mong i-track.</p></div>
               <button className="button button-outline" type="button" onClick={onAddWallet}>Set up a wallet ›</button>
             </div>
           ) : (
@@ -1167,11 +1267,6 @@ function Dashboard({
             </div>
           )}
         </section>
-        <aside className="panel insight-panel">
-          <span className="insight-icon" aria-hidden="true">{gengMessage ? GENG_EXPRESSION : '✦'}</span>
-          <h2>{gengMessage ? 'Geng says' : 'Getting started'}</h2>
-          <p>{gengMessage ?? (wallets.length ? 'Record transactions to keep your balances up to date.' : 'Add a wallet to begin tracking your money.')}</p>
-        </aside>
       </div>
 
       <div className="privacy-note"><span aria-hidden="true">⌑</span><p><strong>Local-first, for real.</strong> Data stays in this browser on this device. Clearing browser storage removes it. Download a backup from More.</p></div>
@@ -1238,7 +1333,7 @@ function WalletsPage({
   return (
     <>
       <div className="page-heading">
-        <div><span className="eyebrow">ALL YOUR PERA, ONE PLACE</span><h1>Wallets</h1><p>Keep tabs on where your money is hanging out.</p></div>
+        <div><h1>Wallets</h1><p>Tingnan ang cash, e-wallet, bank, at ipon mo.</p></div>
         <button className="button button-primary add-wallet-button" type="button" onClick={onAdd}><span aria-hidden="true">＋</span> Add wallet</button>
       </div>
       <section className="panel wallets-page-panel">
@@ -1248,7 +1343,7 @@ function WalletsPage({
         ) : dataUnavailable ? (
           <p className="error-state">Wallet details could not be loaded. Use the retry action above to try again.</p>
         ) : wallets.length === 0 && archivedWallets.length === 0 ? (
-          <div className="empty-page"><span className="empty-icon" aria-hidden="true">▣</span><h2>No wallets yet</h2><p>Add a wallet to see your money in one place.</p><button className="button button-primary" type="button" onClick={onAdd}>＋ Add your first wallet</button></div>
+          <div className="empty-page"><span className="empty-icon" aria-hidden="true">▣</span><h2>Wala pang wallet</h2><p>Add ka ng wallet para makita lahat ng pera mo rito.</p><button className="button button-primary" type="button" onClick={onAdd}>＋ Add your first wallet</button></div>
         ) : (
           <>
             {wallets.length > 0 ? (
@@ -1258,7 +1353,7 @@ function WalletsPage({
             ) : !loading && <div className="empty-active-wallets"><p>No active wallets. Your archived balances remain in the total.</p><button className="button button-outline" type="button" onClick={onAdd}>＋ Add wallet</button></div>}
             {archivedWallets.length > 0 && (
               <section className="archived-wallets" aria-labelledby="archived-wallets-title">
-                <h2 id="archived-wallets-title">Archived wallets</h2>
+                <h2 id="archived-wallets-title">Mga naka-archive na wallet</h2>
                 <div className="wallet-list">
                   {archivedWallets.map((wallet) => <WalletRow key={wallet.id} wallet={wallet} balanceCentavos={balances?.get(wallet.id)} visible={visible} onRestore={onRestore} />)}
                 </div>

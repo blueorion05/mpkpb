@@ -79,7 +79,7 @@ function ForecastChart({
   const min = Math.min(0, ...values)
   const max = Math.max(0, ...values)
   const span = max - min || 1
-  const left = 58
+  const left = 132
   const right = 790
   const top = 18
   const bottom = 205
@@ -266,15 +266,14 @@ export default function ForecastPage({
     <>
       <div className="page-heading forecast-heading">
         <div>
-          <span className="eyebrow">LOOK AHEAD, STAY READY</span>
-          <h1>Forecast</h1>
-          <p>See when money may come in, go out, or run short. Projections are not guaranteed.</p>
+          <h1>Aabot pa ba?</h1>
+          <p>Silipin kung kailan papasok o lalabas ang pera at kung kailan ka posibleng kapusin. Tantiya ito.</p>
         </div>
       </div>
 
       <section className="panel forecast-controls" aria-label="Forecast settings">
         <label className="field">
-          <span>Forecast through</span>
+          <span>Tantiya hanggang</span>
           <input
             type="date"
             min={today}
@@ -292,9 +291,9 @@ export default function ForecastPage({
           />
         </label>
         <label className="field">
-          <span>Wallet projection</span>
+          <span>Aling wallet?</span>
           <select value={walletId} onChange={(event) => setWalletId(event.target.value)}>
-            <option value="">All wallets</option>
+            <option value="">Lahat ng wallet</option>
             {wallets.map((wallet) => (
               <option key={wallet.id} value={wallet.id}>
                 {wallet.name}{wallet.protected ? ' · Protected' : ''}{wallet.archived ? ' · Archived' : ''}
@@ -304,7 +303,7 @@ export default function ForecastPage({
         </label>
         <form className="forecast-buffer-form" onSubmit={(event) => void saveBuffer(event)}>
           <label className="field">
-            <span>Safety buffer</span>
+            <span>Reserbang pera</span>
             <span className="currency-input">
               <b>₱</b>
               <input
@@ -312,12 +311,12 @@ export default function ForecastPage({
                 inputMode="decimal"
                 value={bufferInput}
                 onChange={(event) => setBufferInput(event.target.value)}
-                aria-label="Safety buffer in pesos"
+                aria-label="Reserbang pera sa pesos"
               />
             </span>
           </label>
           <button className="button button-quiet" type="submit" disabled={bufferSaving}>
-            {bufferSaving ? 'Saving…' : 'Save buffer'}
+            {bufferSaving ? 'Saving…' : 'I-save ang reserba'}
           </button>
         </form>
       </section>
@@ -326,18 +325,17 @@ export default function ForecastPage({
         The safety buffer is reserved when calculating safe daily and weekly spending.
       </p>
       {bufferError && <p className="form-error" role="alert">{bufferError}</p>}
-      <section className="panel purchase-simulator" aria-label="What-if purchase simulator">
+      <section className="panel purchase-simulator" aria-label="Afford ko ba?">
         <div className="purchase-simulator-heading">
           <div>
-            <span className="eyebrow">BEFORE YOU TAP PAY</span>
-            <h2>What if I buy it?</h2>
-            <p>Preview the cash-flow impact without adding anything to your real ledger.</p>
+            <h2>Afford ko ba?</h2>
+            <p>Tingnan muna kung anong matitira kung itutuloy mo ang bili.</p>
           </div>
-          {hypotheticalPurchase && <button className="button button-quiet" type="button" onClick={clearPurchaseSimulation}>Clear simulation</button>}
+          {hypotheticalPurchase && <button className="button button-quiet" type="button" onClick={clearPurchaseSimulation}>Alisin ang test na gastos</button>}
         </div>
         <form className="purchase-simulator-form" onSubmit={(event) => simulatePurchase(event)}>
           <label className="field">
-            <span>Purchase amount</span>
+            <span>Presyo</span>
             <span className="currency-input"><b>₱</b><input type={visible ? 'text' : 'password'} inputMode="decimal" value={purchaseAmountInput} onChange={(event) => {
               setPurchaseAmountInput(event.target.value)
               setHypotheticalPurchase(undefined)
@@ -345,7 +343,7 @@ export default function ForecastPage({
             }} aria-label="What-if purchase amount in pesos" placeholder="0.00" /></span>
           </label>
           <label className="field">
-            <span>Pay from</span>
+            <span>Saan kukunin?</span>
             <select value={purchaseWallet} onChange={(event) => {
               setPurchaseWalletId(event.target.value)
               setHypotheticalPurchase(undefined)
@@ -355,36 +353,36 @@ export default function ForecastPage({
             </select>
           </label>
           <label className="field">
-            <span>Purchase date</span>
+            <span>Petsa ng bili</span>
             <input type="date" min={today} max={endOn} value={purchaseDate} onChange={(event) => {
               setPurchaseDate(event.target.value)
               setHypotheticalPurchase(undefined)
               setPurchaseError('')
             }} />
           </label>
-          <button className="button button-primary" type="submit" disabled={availablePurchaseWallets.length === 0}>Simulate purchase</button>
+          <button className="button button-primary" type="submit" disabled={availablePurchaseWallets.length === 0}>Tingnan kung kasya</button>
         </form>
         {purchaseError && <p className="form-error" role="alert">{purchaseError}</p>}
         {hypotheticalPurchase && <p className="purchase-simulation-status" role="status">Simulation applied to the {wallets.find((wallet) => wallet.id === hypotheticalPurchase.walletId)?.name ?? 'selected'} forecast. Actual balances and transactions are unchanged.</p>}
       </section>
       {loading ? (
         <section className="panel forecast-empty" aria-live="polite">
-          <span className="eyebrow">LOCAL DATA</span>
-          <h2>Loading your forecast…</h2>
+
+          <h2>Kinukuwenta ang forecast…</h2>
         </section>
       ) : dataUnavailable ? (
         <section className="panel forecast-empty" role="alert">
-          <h2>Forecast data is unavailable.</h2>
-          <p>Check local wallet and schedule data, then retry from the app error message.</p>
+          <h2>Hindi mabasa ang data para sa forecast.</h2>
+          <p>I-check ang wallet at schedule, tapos pindutin ang Subukan ulit.</p>
         </section>
       ) : wallets.length === 0 ? (
         <section className="panel forecast-empty">
-          <h2>Add a wallet to start forecasting.</h2>
-          <p>Once you have a wallet, planned income, debts, and bills can shape the projection.</p>
+          <h2>Mag-add ng wallet para makita ang forecast.</h2>
+          <p>I-add ang wallet para maisama sa tantiya ang paparating na pera, utang, at bayarin.</p>
         </section>
       ) : forecast.error ? (
         <section className="panel forecast-empty" role="alert">
-          <h2>Forecast could not be calculated.</h2>
+          <h2>Hindi nakuwenta ang forecast.</h2>
           <p>{forecast.error}</p>
         </section>
       ) : selectedResult ? (
@@ -408,12 +406,12 @@ export default function ForecastPage({
 
           <section className="forecast-metrics" aria-label="Forecast summary">
             <article className="panel forecast-metric">
-              <span className="metric-label">PROJECTED END BALANCE</span>
+              <span className="metric-label">Matitira sa'yo</span>
               <strong>{displayAmount(selectedBalance, visible)}</strong>
               <small>From {displayAmount(startingBalance, visible)} today</small>
             </article>
             <article className="panel forecast-metric">
-              <span className="metric-label">LOWEST PROJECTED BALANCE</span>
+              <span className="metric-label">Pinakamababang tantiya</span>
               <strong className={minimumBalance < 0 ? 'forecast-negative' : ''}>
                 {displayAmount(minimumBalance, visible)}
               </strong>
@@ -426,20 +424,19 @@ export default function ForecastPage({
               </small>
             </article>
             <article className="panel forecast-metric">
-              <span className="metric-label">SAFE TO SPEND / DAY</span>
+              <span className="metric-label">Pwedeng gastusin kada araw</span>
               <strong>{displayAmount(selectedResult.safeDailyCentavos, visible)}</strong>
-              <small>{displayAmount(selectedResult.safeWeeklyCentavos, visible)} per week · active wallets after buffer</small>
+              <small>{displayAmount(selectedResult.safeWeeklyCentavos, visible)} kada linggo · bawas na ang reserba</small>
             </article>
           </section>
 
           {(relevantShortages.length > 0 || bufferAtRisk) && (
             <section className="forecast-shortage" role="alert" aria-label="Projected cash shortages">
               <div>
-                <span className="eyebrow">CASH-FLOW WARNING</span>
                 <h2>
                   {relevantShortages.length > 0
-                    ? 'Some wallet balances may go below zero.'
-                    : 'Spendable cash may dip below your safety buffer.'}
+                    ? 'Posibleng kukulangin ang laman ng ilang wallet.'
+                    : 'Posibleng bumaba sa reserba ang pwedeng gastusin.'}
                 </h2>
               </div>
               {relevantShortages.length > 0 ? <ul>
@@ -447,18 +444,18 @@ export default function ForecastPage({
                   <li key={`${episode.name}-${episode.startOn}-${index}`}>
                     <strong>{episode.name}</strong>
                     <span>
-                      Short on {dateFormatter.format(new Date(`${episode.startOn}T00:00:00.000Z`))}
+                      Kukulangin sa {dateFormatter.format(new Date(`${episode.startOn}T00:00:00.000Z`))}
                       {episode.recoveryOn
-                        ? ` · back above zero ${dateFormatter.format(new Date(`${episode.recoveryOn}T00:00:00.000Z`))}`
-                        : ' · not recovered within this forecast'}
+                        ? ` · makakabawi sa ${dateFormatter.format(new Date(`${episode.recoveryOn}T00:00:00.000Z`))}`
+                        : ' · kulang pa rin hanggang dulo ng forecast'}
                     </span>
-                    <small>Maximum shortfall: {displayAmount(episode.maximumShortageCentavos, visible)}</small>
+                    <small>Pinakamalaking kulang: {displayAmount(episode.maximumShortageCentavos, visible)}</small>
                   </li>
                 ))}
               </ul> : (
                 <p>
-                  The lowest spendable balance is {displayAmount(selectedResult.minimumSpendableCentavos, visible)}
-                  {' '}against your {displayAmount(safetyBufferCentavos, visible)} buffer.
+                  Pinakamababang pwedeng gastusin: {displayAmount(selectedResult.minimumSpendableCentavos, visible)}
+                  {' '}kumpara sa {displayAmount(safetyBufferCentavos, visible)} na reserba.
                 </p>
               )}
             </section>
@@ -467,8 +464,8 @@ export default function ForecastPage({
           <section className="panel forecast-chart-panel" aria-label="Projected wallet balance chart">
             <div className="panel-heading">
               <div>
-                <span className="eyebrow">CENTAVO-BASED PROJECTION</span>
-                <h2>{selectedWallet ? `${selectedWallet.name} balance` : 'All-wallet balance'}</h2>
+
+                <h2>{selectedWallet ? `${selectedWallet.name} balance` : 'Balance ng lahat ng wallet'}</h2>
               </div>
               <span className="forecast-period">{today} – {endOn}</span>
             </div>
@@ -479,20 +476,20 @@ export default function ForecastPage({
               visible={visible}
             />
             <p className="forecast-chart-note">
-              Uses current ledger balances and scheduled events. Same-day outflows are tested before inflows to avoid hiding a possible shortfall.
+              Base ito sa balance ngayon at sa mga schedule. Kapag pareho ang petsa, inuuna sa tantiya ang lalabas na pera para makita kung kukulangin.
             </p>
           </section>
 
           <section className="panel forecast-events">
             <div className="panel-heading">
               <div>
-                <span className="eyebrow">PLANNED CASH FLOW</span>
-                <h2>Projected events</h2>
+
+                <h2>Mga naka-schedule</h2>
               </div>
               <span className="activity-count">{visibleEvents.length} included</span>
             </div>
             {visibleEvents.length === 0 ? (
-              <p className="forecast-no-events">No active scheduled income, debt, or bill events in this period.</p>
+              <p className="forecast-no-events">Walang naka-schedule na papasok o bayad sa mga petsang ito.</p>
             ) : (
               <ul>
                 {visibleEvents.slice(0, 12).map((event) => {
@@ -507,7 +504,7 @@ export default function ForecastPage({
                         <strong>{event.label}</strong>
                         <small>
                           {event.dueOn < today
-                            ? `Overdue since ${dateFormatter.format(new Date(`${event.dueOn}T00:00:00.000Z`))} · projected today`
+                            ? `Lampas na sa due date mula ${dateFormatter.format(new Date(`${event.dueOn}T00:00:00.000Z`))} · kasama sa tantiya ngayon`
                             : dateFormatter.format(new Date(`${event.projectedOn}T00:00:00.000Z`))}
                           {eventWallet ? ` · ${eventWallet.name}` : ''}
                           {event.confidence ? ` · ${event.confidence} confidence` : ''}

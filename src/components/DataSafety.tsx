@@ -61,20 +61,20 @@ export default function DataSafety() {
 
   return (
     <section className="geng-settings" aria-labelledby="save-history-title">
-      <h2 id="save-history-title">Save history</h2>
+      <h2 id="save-history-title">Mga naka-save</h2>
       <p>{savedAt && Number.isFinite(Date.parse(savedAt))
-        ? 'Last autosave ' + new Date(savedAt).toLocaleString('en-PH') : 'New changes are saved automatically on this device.'}</p>
+        ? 'Huling autosave ' + new Date(savedAt).toLocaleString('en-PH') : 'Automatic na sine-save ang changes sa device na ito.'}</p>
       <fieldset className="data-controls" disabled={busy}>
         <legend>Local recovery</legend>
         <button className="button button-secondary" onClick={() => void run(async () => {
           await createSnapshot()
           setSnapshots(await listSnapshots())
-          setStatus('Snapshot saved on this device.')
-        })}>Create snapshot</button>
+          setStatus('Na-save ang snapshot sa device na ito.')
+        })}>Gumawa ng snapshot</button>
         <button className="button button-secondary" onClick={() => void run(async () => {
           const backup = await exportBackup()
           download('mpkpb-backup-' + backup.createdAt.slice(0, 10) + '.json', JSON.stringify(backup, null, 2), 'application/json')
-        })}>Download JSON backup</button>
+        })}>I-download ang JSON backup</button>
         <button className="button button-secondary" onClick={() => void run(async () => {
           const { records } = await exportBackup()
           const rows = (records.transactions as LedgerTransaction[]).map((entry) => [
@@ -109,24 +109,24 @@ export default function DataSafety() {
         ))}</ul>}
         {preview && (
           <div aria-live="polite">
-            <h3>Restore preview</h3>
+            <h3>Tingnan muna ang ire-restore</h3>
             <p>{new Date(preview.createdAt).toLocaleString('en-PH')} · {preview.records.wallets.length} wallets · {preview.records.transactions.length} transactions · {preview.records.budgets.length} budgets · {preview.records.debts.length} debts · {preview.records.scheduledEvents.length} scheduled events</p>
-            <p>Restoring replaces current records and creates a local safety snapshot.</p>
+            <p>Papalitan nito ang records mo at gagawa muna ng safety snapshot.</p>
             <button className="button button-primary" onClick={() => void run(async () => {
               await replaceFromBackup(preview)
               reloadLocalSession()
-            })}>Replace current records</button>
+            })}>Palitan ang kasalukuyang records</button>
             <button className="text-button" onClick={() => setPreview(undefined)}>Cancel</button>
           </div>
         )}
-        {!reset ? <button className="text-button" onClick={() => { setReset(true); setPreview(undefined); setResetText('') }}>Reset local data</button> : (
+        {!reset ? <button className="text-button" onClick={() => { setReset(true); setPreview(undefined); setResetText('') }}>I-reset ang data sa device</button> : (
           <div>
             <p>Reset permanently deletes financial records, settings, and local snapshots from this browser. Download a backup first if you need these records.</p>
             <label className="field">Type RESET to confirm<input value={resetText} onChange={(event) => setResetText(event.target.value)} /></label>
             <button className="button button-secondary" disabled={resetText !== 'RESET'} onClick={() => void run(async () => {
               await resetLocalData()
               reloadLocalSession()
-            })}>Delete all local data</button>
+            })}>Burahin ang lahat ng local data</button>
             <button className="text-button" onClick={() => setReset(false)}>Cancel</button>
           </div>
         )}

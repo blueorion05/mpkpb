@@ -1897,3 +1897,131 @@
   margin: 10vh auto;
   padding: 1.5rem;
 }
+
+.dialog-backdrop {
+  align-items: safe center;
+  overscroll-behavior: contain;
+  padding-block: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-bottom));
+}
+
+.quick-choices, .upcoming-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.quick-choices button[aria-pressed="true"] {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
+
+.entry-options > summary {
+  cursor: pointer;
+  padding-block: .65rem;
+}
+
+.entry-options > div {
+  display: grid;
+  gap: .75rem;
+}
+
+.upcoming-panel {
+  padding: 1rem;
+  margin-block: 1rem;
+}
+
+.upcoming-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.upcoming-list > li + li {
+  border-top: 1px solid var(--border);
+}
+
+.upcoming-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: .5rem 1rem;
+  padding-block: .65rem;
+  overflow-wrap: anywhere;
+}
+
+.upcoming-row small {
+  display: block;
+}
+
+.settlement-form {
+  margin-block: .5rem 1rem;
+}
+
+@media (max-width: 560px) {
+  .upcoming-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .upcoming-row > .upcoming-actions { grid-column: 1 / -1; }
+  .wallet-dialog, .transaction-dialog { min-width: 0; }
+}
+
+.month-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: .65rem 1rem;
+}
+
+.month-summary dd {
+  margin: .2rem 0 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.balance-grid:has(> :nth-child(2):last-child) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 360px) {
+  .balance-grid:has(> :nth-child(2):last-child) { grid-template-columns: minmax(0, 1fr); }
+}
+
+.sidebar {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.top-quick-add {
+  flex: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 420px) {
+  .top-quick-add { min-height: 42px; padding-inline: .65rem; }
+  .transaction-dialog .form-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .transaction-dialog input[type="date"] { min-inline-size: 0; }
+}
+
+.activity-options {
+  margin-block: .5rem;
+}
+
+.activity-options > .transaction-filters {
+  display: grid;
+}
+
+@media (max-width: 360px) {
+  .transaction-dialog .form-row { grid-template-columns: minmax(0, 1fr); }
+  .mobile-nav-link small { font-size: .65rem; }
+}
+
+.dialog-backdrop:has(.transaction-dialog) {
+  place-items: safe center;
+}
+
+.transaction-dialog {
+  max-height: none;
+  overflow: visible;
+}
+
+.transaction-list .transaction-row {
+  padding-block: .65rem;
+}

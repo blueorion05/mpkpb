@@ -75,3 +75,9 @@ Financial writes stamp the last-save time in the same transaction. Backup reads 
 The privacy gate checks a salted PBKDF2 PIN verifier before mounting financial views. It locks on reopen and after five minutes of inactivity. PIN and restore changes refresh other open windows through a same-origin broadcast. Browser storage remains unencrypted.
 
 Vite emits a service worker with a build-specific static resource list. The worker caches the app shell and all emitted routes. Each worker serves its own shell and assets until the next worker activates after all previous clients close. Cache Storage contains static app assets only. Financial data remains in IndexedDB.
+
+## Dashboard quick add
+
+The entry domain maps future income to ExpectedIncome, future gastos and bills to FinancialObligation, and both directions of debt to DebtRecord. The form edits existing source records and retains their IDs and settlement history. Dashboard settlement uses the existing atomic ledger and schedule write with a separate actual transaction date. Future transfers require a forecast model with linked wallet movements and remain outside the quick-add schedule workflow. The database and backup schemas are unchanged.
+
+The Home month-end summary runs the expected scenario only and uses the existing forecast calculations. Planning initialization reads six required stores in one readonly transaction. Calendar and insights calculations run when their tabs are active.
