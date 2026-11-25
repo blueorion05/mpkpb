@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — Budget planning and expected income
+
+- Added multiple budget plans with custom date ranges, per-expense-category limits, utilization, remaining allowances, duplication, and archival.
+- Added expected income schedules with confidence levels and one-time, weekly, biweekly, or monthly recurrence.
+- Added partial/full income receipts that atomically create ledger income and update schedule progress; editing or deleting a linked receipt reconciles the plan.
+- Added safe date, category, receipt, and centavo validation plus regression tests for budget periods, overspending, recurrence anchors, and receipt reconciliation.
+- Upgraded IndexedDB to schema v4 with non-destructive budget and scheduled-income indexes.
+
 ## 0.2.0 — Core financial ledger
 
 - Added dated income, expense, transfer-with-fee, and signed balance-adjustment transactions.

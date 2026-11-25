@@ -7,6 +7,8 @@ import {
   defaultWalletColor,
   defaultWalletIcon,
   getCategories,
+  getBudgetPlans,
+  getExpectedIncomes,
   getPreference,
   getTransactions,
   getWallets,
@@ -16,6 +18,10 @@ import {
   restoreWallet,
   saveTransaction,
   savePreference,
+  saveBudgetPlan,
+  saveExpectedIncome,
+  archiveBudgetPlan,
+  archiveExpectedIncome,
   updateWallet,
   WALLET_COLORS,
   WALLET_ICONS,
@@ -24,6 +30,7 @@ import {
   type Wallet,
 } from './db/database'
 import ActivityPage from './components/ActivityPage'
+import PlansPage from './components/PlansPage'
 import TransactionDialog from './components/TransactionDialog'
 import {
   calculateLedgerTotals,
@@ -32,6 +39,10 @@ import {
   type LedgerTransaction,
   type TransactionCategory,
 } from './domain/ledger'
+import {
+  type BudgetPlan,
+  type ExpectedIncome,
+} from './domain/planning'
 import { formatPHP, parsePesoToCentavos, sumCentavos } from './domain/money'
 import './App.css'
 
@@ -75,6 +86,11 @@ const todayLabel = new Intl.DateTimeFormat('en-PH', {
   day: 'numeric',
 }).format(new Date())
 
+function localDateInput(): string {
+  const date = new Date()
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
 function centavosInput(amount: number): string {
   return `${Math.floor(amount / 100)}.${String(amount % 100).padStart(2, '0')}`
 }
@@ -102,11 +118,14 @@ function App() {
   const [wallets, setWallets] = useState<Wallet[]>([])
   const [transactions, setTransactions] = useState<LedgerTransaction[]>([])
   const [categories, setCategories] = useState<TransactionCategory[]>([])
+  const [budgetPlans, setBudgetPlans] = useState<BudgetPlan[]>([])
+  const [expectedIncomes, setExpectedIncomes] = useState<ExpectedIncome[]>([])
   const [theme, setTheme] = useState<Theme>('system')
   const [displayName, setDisplayName] = useState('')
   const [balanceVisible, setBalanceVisible] = useState(true)
   const [loading, setLoading] = useState(true)
   const [walletLoadError, setWalletLoadError] = useState(false)
+  const [planningLoadError, setPlanningLoadError] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isOnboarding, setIsOnboarding] = useState(false)
@@ -149,6 +168,22 @@ function App() {
           setLoading(false)
         }
         return
+      }
+
+      try {
+        const [savedBudgets, savedExpectedIncomes] = await Promise.all([
+          getBudgetPlans(),
+          getExpectedIncomes(),
+        ])
+        if (!active) return
+        setBudgetPlans(savedBudgets)
+        setExpectedIncomes(savedExpectedIncomes)
+        setPlanningLoadError(false)
+      } catch (error) {
+        if (active) {
+          setPlanningLoadError(true)
+          setPageError(error instanceof Error ? error.message : 'Planning data could not be loaded.')
+        }
       }
 
       try {
@@ -401,13 +436,18 @@ function App() {
   }
 
   async function handleSaveTransaction(transaction: LedgerTransaction) {
-    await saveTransaction(transaction)
+    const updatedExpectedIncome = await saveTransaction(transaction)
     setTransactions((current) => {
       const exists = current.some((item) => item.id === transaction.id)
       return exists
         ? current.map((item) => item.id === transaction.id ? transaction : item)
         : [...current, transaction]
     })
+    if (updatedExpectedIncome) {
+      setExpectedIncomes((current) => current.map((item) =>
+        item.id === updatedExpectedIncome.id ? updatedExpectedIncome : item,
+      ))
+    }
     setSuccessMessage(
       `${transaction.description} ${editingTransaction ? 'updated' : 'saved'} on this device.`,
     )
@@ -441,13 +481,94 @@ function App() {
   async function confirmDeleteTransaction() {
     if (!transactionToDelete) return
     try {
-      await deleteTransaction(transactionToDelete.id)
+      const updatedExpectedIncome = await deleteTransaction(transactionToDelete.id)
       setTransactions((current) => current.filter((item) => item.id !== transactionToDelete.id))
+      if (updatedExpectedIncome) {
+        setExpectedIncomes((current) => current.map((item) =>
+          item.id === updatedExpectedIncome.id ? updatedExpectedIncome : item,
+        ))
+      }
       setSuccessMessage(`${transactionToDelete.description} removed from your ledger.`)
       setTransactionToDelete(null)
     } catch (error) {
       setPageError(error instanceof Error ? error.message : 'The transaction could not be deleted.')
     }
+  }
+
+  async function handleSaveBudget(plan: BudgetPlan) {
+    await saveBudgetPlan(plan)
+    setBudgetPlans((current) => {
+      const exists = current.some((item) => item.id === plan.id)
+      return exists
+        ? current.map((item) => item.id === plan.id ? plan : item)
+        : [...current, plan]
+    })
+    setSuccessMessage(`${plan.name} saved on this device.`)
+  }
+
+  async function handleArchiveBudget(plan: BudgetPlan) {
+    const archived = await archiveBudgetPlan(plan)
+    setBudgetPlans((current) => current.map((item) => item.id === archived.id ? archived : item))
+    setSuccessMessage(`${plan.name} archived. Its history stays saved.`)
+  }
+
+  async function handleDuplicateBudget(plan: BudgetPlan) {
+    const suffix = ' copy'
+    const name = `${plan.name.slice(0, 50 - suffix.length)}${suffix}`
+    await handleSaveBudget({
+      ...plan,
+      id: crypto.randomUUID(),
+      name,
+      archived: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+  }
+
+  async function handleSaveExpectedIncome(expected: ExpectedIncome) {
+    await saveExpectedIncome(expected)
+    setExpectedIncomes((current) => {
+      const exists = current.some((item) => item.id === expected.id)
+      return exists
+        ? current.map((item) => item.id === expected.id ? expected : item)
+        : [...current, expected]
+    })
+    setSuccessMessage(`${expected.description} saved as expected income.`)
+  }
+
+  async function handleArchiveExpectedIncome(expected: ExpectedIncome) {
+    const archived = await archiveExpectedIncome(expected)
+    setExpectedIncomes((current) => current.map((item) => item.id === archived.id ? archived : item))
+    setSuccessMessage(`${expected.description} archived. Its receipt history stays saved.`)
+  }
+
+  async function handleReceiveIncome(
+    expected: ExpectedIncome,
+    amountCentavos: number,
+    dueOn: string,
+  ) {
+    const now = new Date().toISOString()
+    const transaction: LedgerTransaction = {
+      id: crypto.randomUUID(),
+      kind: 'income',
+      occurredOn: localDateInput(),
+      description: expected.description,
+      amountCentavos,
+      walletId: expected.walletId,
+      expectedIncomeId: expected.id,
+      expectedIncomeDueOn: dueOn,
+      createdAt: now,
+      updatedAt: now,
+      ...(expected.categoryId ? { categoryId: expected.categoryId } : {}),
+    }
+    const updatedExpectedIncome = await saveTransaction(transaction)
+    setTransactions((current) => [...current, transaction])
+    if (updatedExpectedIncome) {
+      setExpectedIncomes((current) => current.map((item) =>
+        item.id === updatedExpectedIncome.id ? updatedExpectedIncome : item,
+      ))
+    }
+    setSuccessMessage(`${formatPHP(amountCentavos)} received and added to your ledger.`)
   }
 
   const currentLabel = pages.find((item) => item.id === page)?.label ?? 'Home'
@@ -586,7 +707,22 @@ function App() {
             />
           )}
           {page === 'plans' && (
-            <ComingSoon title="Budget plans" detail="Build a plan around your real life — not a spreadsheet that makes you cry." />
+            <PlansPage
+              wallets={wallets}
+              transactions={transactions}
+              categories={categories}
+              budgetPlans={budgetPlans}
+              expectedIncomes={expectedIncomes}
+              loading={loading}
+              dataUnavailable={planningLoadError}
+              onSaveBudget={handleSaveBudget}
+              onArchiveBudget={handleArchiveBudget}
+              onDuplicateBudget={handleDuplicateBudget}
+              onSaveExpectedIncome={handleSaveExpectedIncome}
+              onArchiveExpectedIncome={handleArchiveExpectedIncome}
+              onCreateCategory={handleCreateCategory}
+              onReceiveIncome={handleReceiveIncome}
+            />
           )}
           {page === 'more' && <SettingsPage theme={theme} onThemeChange={(next) => void changeTheme(next)} />}
         </main>
@@ -718,6 +854,7 @@ function App() {
             <h2 id="delete-transaction-title">Delete this transaction?</h2>
             <p id="delete-transaction-description">
               {transactionToDelete.description} will be removed. Wallet balances will be recalculated from the remaining history.
+              {transactionToDelete.expectedIncomeId && ' Its expected-income schedule will reopen the amount.'}
             </p>
             <div className="dialog-actions">
               <button className="button button-quiet" type="button" autoFocus onClick={() => setTransactionToDelete(null)}>Keep transaction</button>
@@ -923,18 +1060,6 @@ function WalletsPage({
         )}
       </section>
     </>
-  )
-}
-
-function ComingSoon({ title, detail }: { title: string; detail: string }) {
-  return (
-    <section className="feature-empty">
-      <span className="feature-icon" aria-hidden="true">✳</span>
-      <span className="eyebrow">ONE STEP AT A TIME</span>
-      <h1>{title}</h1>
-      <p>{detail}</p>
-      <span className="phase-label"><span className="status-dot" /> Foundation phase</span>
-    </section>
   )
 }
 

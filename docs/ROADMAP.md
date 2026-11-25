@@ -32,31 +32,61 @@
 - [x] Ledger-derived wallet balances and atomic IndexedDB transaction writes.
 - [x] Backward-compatible schema migration and financial calculation regression tests.
 
-**v0.2.0 core ledger complete.** Expected income, budgets, debts, and forecasts remain future work.
+**v0.2.0 core ledger complete.**
 
-## Phase 3 — Budgets and debts
+## Phase 3 — v0.3.0 Budget planning and expected income
 
-- [ ] Budget plans and category limits.
-- [ ] Expected income and upcoming obligations.
-- [ ] Debt tracking, partial settlements, and recurring events.
-- [ ] Financial calendar.
+- [x] Multiple named budget plans with custom inclusive date ranges.
+- [x] Expense-category limits, utilization, remaining allowances, and overspending visibility.
+- [x] Budget plan duplication and archival.
+- [x] Expected income with confidence levels and one-time, weekly, biweekly, or monthly recurrence.
+- [x] Partial/full receipt tracking linked atomically to posted income transactions.
+- [x] Receipt edit/delete reconciliation and safe monthly recurrence anchors.
+- [x] v3-to-v4 IndexedDB migration, regression tests, responsive workflows, and documentation.
 
-## Phase 4 — Financial intelligence
+**v0.3.0 budget planning and expected income complete.**
 
-- [ ] Cash-flow scenarios, intermediate shortage detection, and safe-to-spend calculations.
-- [ ] Wallet-specific projections, what-if simulator, and insights.
+## Phase 4 — v0.4.0 Debts and upcoming obligations
 
-## Phase 5 — UX polish
+- [ ] Money owed and receivable; existing and new debts.
+- [ ] Partial payments/collections, settlement history, and payment-to-transaction links.
+- [ ] Upcoming bills, due/overdue dates, recurring obligations, and installments.
+- [ ] Double-counting prevention and financial calendar.
 
-- [ ] Contextual Taglish messages, empty states, animation polish, and optional demo data.
-- [ ] Accessibility and mobile refinement.
+## Phase 5 — v0.5.0 Financial forecasting
 
-## Phase 6 — Data safety and offline
+- [ ] Chronological cash flow with intermediate shortage detection and recovery dates.
+- [ ] Conservative, expected, and optimistic scenarios; overdue/partial-event handling.
+- [ ] Wallet projections, protected funds, safety buffers, and safe daily/weekly spending.
+- [ ] Forecast visualizations and customizable periods.
 
-- [ ] Snapshots, backup/restore, CSV export, optional PIN, and PWA support.
-- [ ] Verify offline behavior and schema migrations.
+## Phase 6 — v0.6.0 Tools and analytics
 
-## Phase 7 — Quality and deployment
+- [ ] What-if purchase simulator, calendar, upcoming timeline, and local reminders.
+- [ ] Trends, category breakdowns, income/expense, budget, wallet, and debt analytics.
+- [ ] Relevant date and budget filters.
 
-- [ ] Full financial tests, regression/E2E, accessibility, and performance checks.
-- [ ] Production build and deployment preparation/verification.
+## Phase 7 — v0.7.0 Geng Geng personality and UI/UX
+
+- [ ] Context-aware Taglish humor engine with at least 100 unique punchlines.
+- [ ] Signature expression, humor/profanity toggles, separate financial warnings.
+- [ ] Polished onboarding, optional isolated demo data, accessible animation and responsive themes.
+
+## Phase 8 — v0.8.0 Data safety and privacy
+
+- [ ] Autosave timestamps, manual/safety snapshots, previews, and restoration.
+- [ ] JSON backup/restore with validation/preview, CSV exports, and explicit full reset.
+- [ ] Optional local PIN lock, inactivity locking, verification, limitations, and migration tests.
+
+## Phase 9 — v0.9.0 PWA and comprehensive QA
+
+- [ ] Installable PWA, manifest/icons, offline shell, and safe update handling.
+- [ ] Offline operations, responsive/accessibility/browser persistence testing.
+- [ ] Financial regression and critical workflow E2E tests; performance and cleanup.
+- [ ] Product-spec review against the complete implementation.
+
+## Phase 10 — v1.0.0 Production release
+
+- [ ] Final functional, UI/UX, financial integrity, and privacy review.
+- [ ] Update version/docs; final production build, Git commit/tag, GitHub push, and deployment.
+- [ ] Verify the production site or document the exact authorization blocker and remaining action.

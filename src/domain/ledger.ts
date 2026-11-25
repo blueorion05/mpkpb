@@ -13,6 +13,8 @@ export interface LedgerTransaction {
   toWalletId?: string
   feeCentavos?: number
   categoryId?: string
+  expectedIncomeId?: string
+  expectedIncomeDueOn?: string
   createdAt: string
   updatedAt: string
 }
@@ -66,6 +68,19 @@ function isTimestamp(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(Date.parse(value))
 }
 
+function isExpectedIncomeLink(transaction: Partial<LedgerTransaction>): boolean {
+  const hasId = transaction.expectedIncomeId !== undefined
+  const hasDueOn = transaction.expectedIncomeDueOn !== undefined
+  if (!hasId && !hasDueOn) return true
+  return transaction.kind === 'income' &&
+    typeof transaction.expectedIncomeId === 'string' &&
+    transaction.expectedIncomeId.length > 0 &&
+    typeof transaction.expectedIncomeDueOn === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(transaction.expectedIncomeDueOn) &&
+    Number.isFinite(new Date(`${transaction.expectedIncomeDueOn}T00:00:00.000Z`).getTime()) &&
+    new Date(`${transaction.expectedIncomeDueOn}T00:00:00.000Z`).toISOString().slice(0, 10) === transaction.expectedIncomeDueOn
+}
+
 export function isLedgerTransaction(value: unknown): value is LedgerTransaction {
   if (typeof value !== 'object' || value === null) return false
   const transaction = value as Partial<LedgerTransaction>
@@ -84,6 +99,7 @@ export function isLedgerTransaction(value: unknown): value is LedgerTransaction 
   ) {
     return false
   }
+  if (!isExpectedIncomeLink(transaction)) return false
 
   if (transaction.kind === 'income' || transaction.kind === 'expense') {
     return (

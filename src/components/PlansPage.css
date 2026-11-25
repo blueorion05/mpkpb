@@ -1,0 +1,389 @@
+.plans-heading {
+  align-items: flex-start;
+}
+
+.plans-tabs {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 16px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.plans-tabs > button {
+  min-height: 36px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text-soft);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.plans-tabs > button.selected {
+  color: var(--brand-dark);
+  background: var(--brand-wash);
+}
+
+.plans-archived-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  padding: 0 8px;
+  color: var(--text-soft);
+  font-size: 9px;
+}
+
+.plans-archived-toggle input,
+.budget-limit-row input[type='checkbox'] {
+  accent-color: var(--brand);
+}
+
+.plans-list {
+  display: grid;
+  gap: 13px;
+}
+
+.plans-empty {
+  min-height: 275px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.plan-card {
+  padding: 17px 19px;
+}
+
+.plan-card.plan-archived {
+  opacity: 0.76;
+}
+
+.plan-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.plan-card-heading h2 {
+  margin: 4px 0 0;
+  font-size: 14px;
+  letter-spacing: -0.25px;
+}
+
+.plan-card-heading p {
+  margin: 5px 0 0;
+  color: var(--text-soft);
+  font-size: 9px;
+}
+
+.plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+.plan-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-subtle);
+}
+
+.plan-overview > span {
+  display: grid;
+  gap: 5px;
+}
+
+.plan-overview small {
+  color: var(--text-faint);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.65px;
+}
+
+.plan-overview strong {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.amount-over {
+  color: #b94a36 !important;
+}
+
+.budget-category-list,
+.receipt-history {
+  display: grid;
+  gap: 13px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.budget-category-list li {
+  display: grid;
+  gap: 6px;
+}
+
+.budget-category-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 9px;
+}
+
+.budget-category-heading > span {
+  color: var(--text-soft);
+  text-align: right;
+}
+
+.budget-meter {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--surface-subtle);
+}
+
+.budget-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--brand);
+  transition: width 180ms ease;
+}
+
+.budget-meter > .meter-over {
+  background: #d65b4a;
+}
+
+.budget-category-list li > small {
+  color: var(--text-faint);
+  font-size: 8px;
+}
+
+.confidence-tag {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 7px;
+  border-radius: 20px;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.confidence-high {
+  color: #316a43;
+  background: #e8f4e8;
+}
+
+.confidence-medium {
+  color: #875f18;
+  background: #fbf2da;
+}
+
+.confidence-low {
+  color: #8d4a3e;
+  background: #fae9e5;
+}
+
+.income-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--text-soft);
+  font-size: 9px;
+}
+
+.income-status {
+  padding: 4px 8px;
+  border-radius: 20px;
+  color: var(--text-soft);
+  background: var(--surface-subtle);
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.income-status.status-overdue {
+  color: #9c3d2e;
+  background: #fae9e5;
+}
+
+.income-status.status-received {
+  color: #316a43;
+  background: #e8f4e8;
+}
+
+.receipt-history {
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+
+.receipt-history li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 0 0;
+  color: var(--text-soft);
+  font-size: 8px;
+}
+
+.receipt-history strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.local-note {
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text-soft);
+  background: var(--surface-subtle);
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.planning-dialog {
+  max-height: min(90vh, 760px);
+  overflow-y: auto;
+}
+
+.budget-category-fields {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.budget-category-fields legend {
+  padding: 0 5px;
+  color: var(--text-soft);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.budget-limit-row {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(130px, 180px);
+  align-items: center;
+  gap: 11px;
+}
+
+.budget-limit-row > label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text);
+  font-size: 9px;
+}
+
+.budget-limit-row .currency-input {
+  min-height: 34px;
+}
+
+.budget-limit-row .currency-input input {
+  min-height: 30px;
+}
+
+.inline-category-create {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.inline-category-create .field {
+  flex: 1;
+}
+
+.receipt-remaining {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-radius: 9px;
+  color: var(--text-soft);
+  background: var(--surface-subtle);
+  font-size: 9px;
+}
+
+.receipt-remaining strong {
+  color: var(--text);
+  font-size: 16px;
+}
+
+@media (max-width: 760px) {
+  .plans-heading {
+    align-items: flex-end;
+  }
+
+  .plans-heading .button {
+    min-width: max-content;
+  }
+
+  .plan-card {
+    padding: 14px;
+  }
+
+  .plan-card-heading {
+    flex-direction: column;
+  }
+
+  .plan-actions {
+    justify-content: flex-start;
+  }
+
+  .plan-overview {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .plan-overview strong {
+    font-size: 11px;
+  }
+
+  .plans-tabs {
+    flex-wrap: wrap;
+  }
+
+  .plans-archived-toggle {
+    margin-left: 4px;
+  }
+}
+
+@media (max-width: 390px) {
+  .plans-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .plan-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .budget-limit-row {
+    grid-template-columns: minmax(90px, 1fr) minmax(115px, 140px);
+    gap: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .budget-meter > span {
+    transition: none;
+  }
+}

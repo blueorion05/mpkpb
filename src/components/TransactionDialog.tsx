@@ -134,6 +134,12 @@ export default function TransactionDialog({
       walletId,
       createdAt: editingTransaction?.createdAt ?? now,
       updatedAt: now,
+      ...(editingTransaction?.expectedIncomeId && editingTransaction.expectedIncomeDueOn
+        ? {
+            expectedIncomeId: editingTransaction.expectedIncomeId,
+            expectedIncomeDueOn: editingTransaction.expectedIncomeDueOn,
+          }
+        : {}),
       ...(kind === 'transfer'
         ? { toWalletId, feeCentavos: feeCentavos ?? undefined }
         : {}),
@@ -179,6 +185,7 @@ export default function TransactionDialog({
             <select
               name="kind"
               value={kind}
+              disabled={Boolean(editingTransaction?.expectedIncomeId)}
               onChange={(event) => {
                 if (isTransactionKind(event.target.value)) {
                   setKind(event.target.value)
@@ -192,6 +199,9 @@ export default function TransactionDialog({
               <option value="adjustment">Balance adjustment</option>
             </select>
           </label>
+          {editingTransaction?.expectedIncomeId && (
+            <p className="field-note">This receipt is linked to an expected-income schedule. Its type stays as income; deleting it will reopen the expected amount.</p>
+          )}
 
           <div className="form-row">
             <label className="field">

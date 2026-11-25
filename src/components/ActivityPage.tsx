@@ -224,7 +224,7 @@ export default function ActivityPage({
                     <small>
                       {transaction.kind === 'transfer'
                         ? `${sourceWallet?.name ?? 'Unknown wallet'} → ${destinationWallet?.name ?? 'Unknown wallet'} · Fee ${formatPHP(transaction.feeCentavos ?? 0)}`
-                        : [sourceWallet?.name, category?.name].filter(Boolean).join(' · ')}
+                          : [sourceWallet?.name, category?.name, transaction.expectedIncomeId ? 'Scheduled income receipt' : null].filter(Boolean).join(' · ')}
                     </small>
                   </div>
                   <strong className="transaction-amount">{transactionAmount(transaction)}</strong>
