@@ -1269,7 +1269,7 @@
     left: 0;
     display: grid;
     height: calc(62px + env(safe-area-inset-bottom));
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     padding: 4px 7px env(safe-area-inset-bottom);
     border-top: 1px solid var(--border);
     background: color-mix(in srgb, var(--surface) 96%, transparent);

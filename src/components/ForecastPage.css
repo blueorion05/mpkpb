@@ -1,0 +1,384 @@
+.forecast-heading {
+  margin-bottom: 17px;
+}
+
+.forecast-controls {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(170px, 1fr) minmax(240px, 1.3fr);
+  align-items: end;
+  gap: 12px;
+  padding: 15px;
+}
+
+.forecast-controls > .field,
+.forecast-buffer-form > .field {
+  margin: 0;
+}
+
+.forecast-buffer-form {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+
+.forecast-buffer-form .field {
+  min-width: 0;
+  flex: 1;
+}
+
+.forecast-buffer-form .button {
+  min-height: 38px;
+  white-space: nowrap;
+}
+
+.forecast-buffer-note {
+  margin: 8px 2px 17px;
+  color: var(--text-faint);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.forecast-scenarios {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 13px;
+}
+
+.forecast-scenarios > p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 9px;
+  text-align: right;
+}
+
+.forecast-scenario-tabs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.forecast-scenario-tabs > button {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--text-soft);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.forecast-scenario-tabs > button.selected {
+  color: var(--brand-dark);
+  background: var(--brand-wash);
+}
+
+.forecast-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+  margin-bottom: 13px;
+}
+
+.forecast-metric {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  padding: 14px 16px;
+}
+
+.forecast-metric strong {
+  overflow: hidden;
+  font-size: clamp(14px, 1.7vw, 21px);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+}
+
+.forecast-metric small {
+  color: var(--text-faint);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.forecast-negative,
+.forecast-outflow {
+  color: #b94a36;
+}
+
+.forecast-shortage {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.7fr) minmax(0, 1.3fr);
+  gap: 17px;
+  margin-bottom: 13px;
+  padding: 15px 17px;
+  border: 1px solid color-mix(in srgb, #d65b4a 38%, var(--border));
+  border-radius: 12px;
+  color: var(--text);
+  background: color-mix(in srgb, #d65b4a 7%, var(--surface));
+}
+
+.forecast-shortage h2 {
+  margin: 5px 0 0;
+  font-size: 13px;
+}
+
+.forecast-shortage > p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.forecast-shortage ul,
+.forecast-events ul {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.forecast-shortage li {
+  display: grid;
+  gap: 3px;
+  font-size: 9px;
+}
+
+.forecast-shortage li > span,
+.forecast-shortage li > small {
+  color: var(--text-soft);
+  font-size: 9px;
+}
+
+.forecast-chart-panel,
+.forecast-events {
+  margin-bottom: 13px;
+  padding: 17px 19px;
+}
+
+.forecast-period {
+  color: var(--text-faint);
+  font-size: 9px;
+  text-align: right;
+}
+
+.forecast-chart-wrap {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.forecast-chart {
+  display: block;
+  width: 100%;
+  min-width: 490px;
+  height: auto;
+  overflow: visible;
+}
+
+.forecast-gridline {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.forecast-zero-line {
+  stroke: #d65b4a;
+  stroke-dasharray: 4 4;
+  stroke-width: 1.3;
+}
+
+.forecast-axis-label {
+  fill: var(--text-faint);
+  font-family: inherit;
+  font-size: 10px;
+}
+
+.forecast-line {
+  fill: none;
+  stroke: var(--brand);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.forecast-point {
+  fill: var(--brand);
+}
+
+.forecast-chart-note {
+  margin: 2px 0 0;
+  color: var(--text-faint);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.forecast-events ul {
+  gap: 0;
+}
+
+.forecast-events li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.forecast-events li:last-child {
+  border-bottom: 0;
+}
+
+.forecast-event-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--surface-subtle);
+}
+
+.forecast-event-icon.inflow,
+.forecast-inflow {
+  color: var(--brand-dark);
+}
+
+.forecast-event-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 4px;
+}
+
+.forecast-event-copy strong {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.forecast-event-copy small,
+.forecast-events li > strong {
+  color: var(--text-soft);
+  font-size: 9px;
+}
+
+.forecast-events li > strong {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.forecast-no-events,
+.forecast-more-events {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 10px;
+}
+
+.forecast-more-events {
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+}
+
+.forecast-empty {
+  margin-top: 14px;
+  padding: 25px;
+}
+
+.forecast-empty h2 {
+  margin: 0 0 7px;
+  font-size: 15px;
+}
+
+.forecast-empty p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+@media (max-width: 880px) {
+  .forecast-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .forecast-buffer-form {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .forecast-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .forecast-buffer-form {
+    grid-column: auto;
+  }
+
+  .forecast-scenarios {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .forecast-scenarios > p {
+    text-align: left;
+  }
+
+  .forecast-scenario-tabs {
+    width: 100%;
+  }
+
+  .forecast-scenario-tabs > button {
+    min-width: 0;
+    flex: 1;
+    padding: 0 6px;
+    font-size: 8px;
+  }
+
+  .forecast-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .forecast-metric {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 5px 10px;
+  }
+
+  .forecast-metric .metric-label,
+  .forecast-metric small {
+    grid-column: 1;
+  }
+
+  .forecast-metric strong {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    max-width: 45vw;
+    text-align: right;
+  }
+
+  .forecast-shortage {
+    grid-template-columns: 1fr;
+    gap: 11px;
+  }
+
+  .forecast-chart-panel,
+  .forecast-events {
+    padding: 14px;
+  }
+}
+

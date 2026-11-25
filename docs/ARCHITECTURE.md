@@ -4,13 +4,15 @@
 
 - `src/App.tsx`: responsive app shell, navigation, first-run onboarding, wallet management, and foundation views.
 - `src/components/ActivityPage.tsx` and `src/components/TransactionDialog.tsx`: searchable ledger history and transaction/category entry.
+- `src/components/ForecastPage.tsx`: date- and wallet-specific forecast controls, scenarios, safe-to-spend summaries, and cash-flow visualizations.
 - `src/components/PlansPage.tsx` and `src/components/DebtsPage.tsx`: budget plans, expected income, debts, bills, and payment workflows.
 - `src/db/database.ts`: browser-native IndexedDB database, schema migration, and typed wallet/ledger/planning/debt operations.
 - `src/domain/ledger.ts`: transaction invariants, balance deltas, ledger summaries, and history filters.
 - `src/domain/planning.ts`: budget validation/progress, expected-income schedules, and receipt reconciliation.
 - `src/domain/debts.ts` and `src/domain/recurrence.ts`: debt/obligation validation, installment progress, payment reconciliation, and shared recurrence dates.
+- `src/domain/forecast.ts`: chronological scenario projections, overdue schedule expansion, shortage/recovery analysis, and safe daily/weekly spending.
 - `src/domain/money.ts`: centavo parsing, PHP formatting, and safe aggregation.
-- `tests/ledger.test.ts`, `tests/planning.test.ts`, `tests/debts.test.ts`, and `tests/money.test.ts`: financial invariant tests using Node's built-in test runner.
+- `tests/ledger.test.ts`, `tests/planning.test.ts`, `tests/debts.test.ts`, `tests/forecast.test.ts`, and `tests/money.test.ts`: financial invariant tests using Node's built-in test runner.
 - `src/index.css` and `src/App.css`: theme tokens, global styles, and responsive components.
 
 ## Local database
@@ -26,7 +28,7 @@ Database: `mpkpb`, schema version `5`. Stores and indexes are created in Indexed
 | debts | `id` | Debt schedules, optional original transaction links, and settlement history |
 | scheduledEvents | `id` | Expected-income schedules and bill obligations with linked transactions |
 | snapshots | `id` | Reserved for local save history |
-| preferences | `key` | Theme and optional display name |
+| preferences | `key` | Theme, optional display name, and forecast safety buffer |
 
 Database access stays in `src/db`. Transaction writes validate the referenced wallet(s) and category and commit in one read-write IndexedDB transaction. Updating a wallet's opening balance is rejected after ledger activity; use a signed balance adjustment instead. Future schema changes must increment the database version and use IndexedDB's `onupgradeneeded` migration transaction. Archived wallets remain stored and included in total balance; they are excluded from spendable funds until restored.
 
@@ -45,6 +47,12 @@ Budget progress counts categorized expense transactions whose dates fall inside 
 Debt schedules store integer-centavo principal, direction, wallet/category references, recurrence, installment amount/count, optional principal transaction ID, and settlement transaction references. Each settlement is limited to the remaining amount for its due occurrence and the remaining principal. A linked original transaction must match debt direction and amount, cannot itself be a scheduled transaction, and cannot be deleted while referenced. When linked, settlement transactions continue to change wallet balances but are excluded from income/expense summaries and category budgets.
 
 Bill obligations are stored as scheduled events, never as current balance. Payments are categorized expense transactions linked to a due occurrence. Partial payments remain attached to that occurrence; a completed recurring occurrence advances using the shared recurrence helper. Editing or deleting a linked transaction reconciles its schedule atomically. Removing an earlier payment when later installment history exists is rejected rather than leaving a broken schedule.
+
+## Forecast rules
+
+`calculateForecast` derives starting balances from the wallet ledger and expands active income, debt, and bill schedules into integer-centavo events. A partial occurrence contributes only its unpaid remainder. Overdue occurrences project from today, and same-day outflows are evaluated before inflows so an end-of-day positive balance cannot hide an intermediate shortage. Recurring arrears remain individually represented; protected and archived wallets appear in total and wallet projections but are excluded from spendable funds.
+
+The conservative scenario includes only high-confidence expected income and excludes debt collections; expected includes high/medium income and scheduled debt collections; optimistic includes all expected income and collections. Planned outflows remain in every scenario. Safe daily spending is constrained by the minimum projected unprotected, active balance after the safety buffer across the selected period. Weekly spending is capped by both seven days at that daily pace and the lowest available headroom. The safety buffer is stored as a local preference; forecasts do not modify ledger balances or transmit data.
 
 ## Calculation rules
 

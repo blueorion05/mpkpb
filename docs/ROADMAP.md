@@ -58,10 +58,13 @@
 
 ## Phase 5 — v0.5.0 Financial forecasting
 
-- [ ] Chronological cash flow with intermediate shortage detection and recovery dates.
-- [ ] Conservative, expected, and optimistic scenarios; overdue/partial-event handling.
-- [ ] Wallet projections, protected funds, safety buffers, and safe daily/weekly spending.
-- [ ] Forecast visualizations and customizable periods.
+- [x] Chronological cash flow with intermediate shortage detection and recovery dates.
+- [x] Conservative, expected, and optimistic scenarios; overdue/partial-event handling.
+- [x] Wallet projections, protected funds, safety buffers, and safe daily/weekly spending.
+- [x] Forecast visualizations and customizable periods.
+- [x] Centavo regression coverage, local safety-buffer persistence, and responsive browser checks.
+
+**v0.5.0 financial forecasting complete.**
 
 ## Phase 6 — v0.6.0 Tools and analytics
 

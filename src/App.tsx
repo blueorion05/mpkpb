@@ -37,6 +37,7 @@ import {
   type UpdatedScheduledEvent,
 } from './db/database'
 import ActivityPage from './components/ActivityPage'
+import ForecastPage from './components/ForecastPage'
 import PlansPage from './components/PlansPage'
 import TransactionDialog from './components/TransactionDialog'
 import {
@@ -57,13 +58,14 @@ import {
 import { formatPHP, parsePesoToCentavos, sumCentavos } from './domain/money'
 import './App.css'
 
-type Page = 'home' | 'wallets' | 'activity' | 'plans' | 'more'
+type Page = 'home' | 'wallets' | 'activity' | 'forecast' | 'plans' | 'more'
 type Theme = 'system' | 'light' | 'dark'
 
 const pages: { id: Page; label: string; icon: string }[] = [
   { id: 'home', label: 'Home', icon: '⌂' },
   { id: 'wallets', label: 'Wallets', icon: '▣' },
   { id: 'activity', label: 'Activity', icon: '↗' },
+  { id: 'forecast', label: 'Forecast', icon: '⌁' },
   { id: 'plans', label: 'Plans', icon: '▤' },
   { id: 'more', label: 'More', icon: '•••' },
 ]
@@ -133,6 +135,7 @@ function App() {
   const [expectedIncomes, setExpectedIncomes] = useState<ExpectedIncome[]>([])
   const [debts, setDebts] = useState<DebtRecord[]>([])
   const [obligations, setObligations] = useState<FinancialObligation[]>([])
+  const [forecastSafetyBufferCentavos, setForecastSafetyBufferCentavos] = useState(0)
   const [theme, setTheme] = useState<Theme>('system')
   const [displayName, setDisplayName] = useState('')
   const [balanceVisible, setBalanceVisible] = useState(true)
@@ -221,16 +224,23 @@ function App() {
       }
 
       try {
-        const [savedTheme, savedName, onboardingComplete] = await Promise.all([
+        const [savedTheme, savedName, onboardingComplete, savedForecastBuffer] = await Promise.all([
           getPreference('theme'),
           getPreference('displayName'),
           getPreference('onboardingComplete'),
+          getPreference('forecastSafetyBufferCentavos'),
         ])
         if (!active) return
         if (savedTheme === 'system' || savedTheme === 'light' || savedTheme === 'dark') {
           setTheme(savedTheme)
         }
         setDisplayName(savedName ?? '')
+        if (savedForecastBuffer !== undefined) {
+          const parsedBuffer = Number(savedForecastBuffer)
+          if (Number.isSafeInteger(parsedBuffer) && parsedBuffer >= 0) {
+            setForecastSafetyBufferCentavos(parsedBuffer)
+          }
+        }
         if (savedWallets.length === 0 && onboardingComplete !== 'true') {
           setIsOnboarding(true)
           setDialogOpen(true)
@@ -672,6 +682,15 @@ function App() {
     setSuccessMessage(`${formatPHP(amountCentavos)} bill payment recorded in your ledger.`)
   }
 
+  async function handleSaveForecastSafetyBuffer(amountCentavos: number) {
+    if (!Number.isSafeInteger(amountCentavos) || amountCentavos < 0) {
+      throw new TypeError('The safety buffer must be a non-negative centavo amount.')
+    }
+    await savePreference('forecastSafetyBufferCentavos', String(amountCentavos))
+    setForecastSafetyBufferCentavos(amountCentavos)
+    setSuccessMessage('Your forecast safety buffer was saved on this device.')
+  }
+
   const currentLabel = pages.find((item) => item.id === page)?.label ?? 'Home'
   const activeWallets = wallets.filter((wallet) => !wallet.archived)
   const archivedWallets = wallets.filter((wallet) => wallet.archived)
@@ -805,6 +824,20 @@ function App() {
               onAdd={openTransactionDialog}
               onEdit={openEditTransaction}
               onDelete={setTransactionToDelete}
+            />
+          )}
+          {page === 'forecast' && (
+            <ForecastPage
+              wallets={wallets}
+              transactions={transactions}
+              expectedIncomes={expectedIncomes}
+              debts={debts}
+              obligations={obligations}
+              loading={loading}
+              dataUnavailable={walletLoadError || planningLoadError}
+              visible={balanceVisible}
+              safetyBufferCentavos={forecastSafetyBufferCentavos}
+              onSaveSafetyBuffer={handleSaveForecastSafetyBuffer}
             />
           )}
           {page === 'plans' && (

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 — Financial forecasting
+
+- Added chronological conservative, expected, and optimistic cash-flow projections through a customizable date, defaulting to month-end.
+- Projected recurring income, debt installments/collections, and bills using unpaid amounts; overdue occurrences are visible from the current date.
+- Added same-day outflow-first shortage checks, maximum shortfall and recovery dates, and wallet-specific balance projections.
+- Added protected-fund exclusions, a locally persisted safety buffer, and safe daily/weekly spending estimates.
+- Added responsive forecast controls, an accessible SVG balance chart, scenario explanations, and centavo-level regression coverage.
+
 ## 0.4.0 — Debts and upcoming obligations
 
 - Added payable and receivable debt records with one-time or recurring installment schedules, partial settlements, progress, and archival.
