@@ -15,6 +15,11 @@ export interface LedgerTransaction {
   categoryId?: string
   expectedIncomeId?: string
   expectedIncomeDueOn?: string
+  debtSettlementId?: string
+  debtSettlementDueOn?: string
+  debtSettlementExcludedFromTotals?: boolean
+  obligationId?: string
+  obligationDueOn?: string
   createdAt: string
   updatedAt: string
 }
@@ -81,6 +86,37 @@ function isExpectedIncomeLink(transaction: Partial<LedgerTransaction>): boolean 
     new Date(`${transaction.expectedIncomeDueOn}T00:00:00.000Z`).toISOString().slice(0, 10) === transaction.expectedIncomeDueOn
 }
 
+function isValidLinkedSchedule(transaction: Partial<LedgerTransaction>): boolean {
+  const expectedIncome = transaction.expectedIncomeId !== undefined ||
+    transaction.expectedIncomeDueOn !== undefined
+  const debtSettlement = transaction.debtSettlementId !== undefined ||
+    transaction.debtSettlementDueOn !== undefined ||
+    transaction.debtSettlementExcludedFromTotals !== undefined
+  const obligation = transaction.obligationId !== undefined ||
+    transaction.obligationDueOn !== undefined
+  if ([expectedIncome, debtSettlement, obligation].filter(Boolean).length > 1) return false
+  if (debtSettlement) {
+    return (transaction.kind === 'income' || transaction.kind === 'expense') &&
+      typeof transaction.debtSettlementId === 'string' &&
+      transaction.debtSettlementId.length > 0 &&
+      typeof transaction.debtSettlementDueOn === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(transaction.debtSettlementDueOn) &&
+      Number.isFinite(new Date(`${transaction.debtSettlementDueOn}T00:00:00.000Z`).getTime()) &&
+      new Date(`${transaction.debtSettlementDueOn}T00:00:00.000Z`).toISOString().slice(0, 10) === transaction.debtSettlementDueOn &&
+      typeof transaction.debtSettlementExcludedFromTotals === 'boolean'
+  }
+  if (obligation) {
+    return transaction.kind === 'expense' &&
+      typeof transaction.obligationId === 'string' &&
+      transaction.obligationId.length > 0 &&
+      typeof transaction.obligationDueOn === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(transaction.obligationDueOn) &&
+      Number.isFinite(new Date(`${transaction.obligationDueOn}T00:00:00.000Z`).getTime()) &&
+      new Date(`${transaction.obligationDueOn}T00:00:00.000Z`).toISOString().slice(0, 10) === transaction.obligationDueOn
+  }
+  return true
+}
+
 export function isLedgerTransaction(value: unknown): value is LedgerTransaction {
   if (typeof value !== 'object' || value === null) return false
   const transaction = value as Partial<LedgerTransaction>
@@ -99,7 +135,7 @@ export function isLedgerTransaction(value: unknown): value is LedgerTransaction 
   ) {
     return false
   }
-  if (!isExpectedIncomeLink(transaction)) return false
+  if (!isExpectedIncomeLink(transaction) || !isValidLinkedSchedule(transaction)) return false
 
   if (transaction.kind === 'income' || transaction.kind === 'expense') {
     return (
@@ -231,10 +267,14 @@ export function calculateLedgerTotals(transactions: readonly LedgerTransaction[]
     }
     switch (transaction.kind) {
       case 'income':
-        incomes.push(transaction.amountCentavos)
+        if (!transaction.debtSettlementExcludedFromTotals) {
+          incomes.push(transaction.amountCentavos)
+        }
         break
       case 'expense':
-        expenses.push(transaction.amountCentavos)
+        if (!transaction.debtSettlementExcludedFromTotals) {
+          expenses.push(transaction.amountCentavos)
+        }
         break
       case 'transfer':
         transferFees.push(transaction.feeCentavos ?? 0)

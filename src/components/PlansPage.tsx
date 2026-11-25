@@ -10,6 +10,8 @@ import {
   type IncomeRecurrence,
 } from '../domain/planning'
 import type { LedgerTransaction, TransactionCategory } from '../domain/ledger'
+import DebtsPage from './DebtsPage'
+import type { DebtRecord, FinancialObligation } from '../domain/debts'
 import { formatPHP, parsePesoToCentavos } from '../domain/money'
 import type { Wallet } from '../db/database'
 import './PlansPage.css'
@@ -20,6 +22,8 @@ interface PlansPageProps {
   categories: readonly TransactionCategory[]
   budgetPlans: readonly BudgetPlan[]
   expectedIncomes: readonly ExpectedIncome[]
+  debts: readonly DebtRecord[]
+  obligations: readonly FinancialObligation[]
   loading: boolean
   dataUnavailable: boolean
   onSaveBudget: (plan: BudgetPlan) => Promise<void>
@@ -29,6 +33,16 @@ interface PlansPageProps {
   onArchiveExpectedIncome: (expected: ExpectedIncome) => Promise<void>
   onCreateCategory: (name: string, kind: 'income' | 'expense') => Promise<TransactionCategory>
   onReceiveIncome: (expected: ExpectedIncome, amountCentavos: number, dueOn: string) => Promise<void>
+  onSaveDebt: (debt: DebtRecord) => Promise<void>
+  onArchiveDebt: (debt: DebtRecord) => Promise<void>
+  onSaveObligation: (obligation: FinancialObligation) => Promise<void>
+  onArchiveObligation: (obligation: FinancialObligation) => Promise<void>
+  onSettleDebt: (debt: DebtRecord, amountCentavos: number, dueOn: string) => Promise<void>
+  onPayObligation: (
+    obligation: FinancialObligation,
+    amountCentavos: number,
+    dueOn: string,
+  ) => Promise<void>
 }
 
 const dateFormatter = new Intl.DateTimeFormat('en-PH', {
@@ -124,6 +138,8 @@ function PlansPage({
   categories,
   budgetPlans,
   expectedIncomes,
+  debts,
+  obligations,
   loading,
   dataUnavailable,
   onSaveBudget,
@@ -133,8 +149,14 @@ function PlansPage({
   onArchiveExpectedIncome,
   onCreateCategory,
   onReceiveIncome,
+  onSaveDebt,
+  onArchiveDebt,
+  onSaveObligation,
+  onArchiveObligation,
+  onSettleDebt,
+  onPayObligation,
 }: PlansPageProps) {
-  const [activeTab, setActiveTab] = useState<'budgets' | 'income'>('budgets')
+  const [activeTab, setActiveTab] = useState<'budgets' | 'income' | 'debts'>('budgets')
   const [includeArchived, setIncludeArchived] = useState(false)
   const [editingBudget, setEditingBudget] = useState<BudgetPlan | null | undefined>(undefined)
   const [editingIncome, setEditingIncome] = useState<ExpectedIncome | null | undefined>(undefined)
@@ -219,13 +241,15 @@ function PlansPage({
           <h1>Plans</h1>
           <p>Give every plan a date range. Actual balances only change when money is posted.</p>
         </div>
-        <button
-          className="button button-primary"
-          type="button"
-          onClick={() => activeTab === 'budgets' ? setEditingBudget(null) : setEditingIncome(null)}
-        >
-          ＋ {activeTab === 'budgets' ? 'New budget' : 'Schedule income'}
-        </button>
+        {activeTab !== 'debts' && (
+          <button
+            className="button button-primary"
+            type="button"
+            onClick={() => activeTab === 'budgets' ? setEditingBudget(null) : setEditingIncome(null)}
+          >
+            ＋ {activeTab === 'budgets' ? 'New budget' : 'Schedule income'}
+          </button>
+        )}
       </div>
 
       <div className="plans-tabs" role="tablist" aria-label="Planning tools">
@@ -247,10 +271,21 @@ function PlansPage({
           type="button"
           onClick={() => setActiveTab('income')}
         >Expected income</button>
-        <label className="plans-archived-toggle">
-          <input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} />
-          Include archived
-        </label>
+        <button
+          id="plans-debts-tab"
+          role="tab"
+          aria-selected={activeTab === 'debts'}
+          aria-controls="plans-debts-panel"
+          className={activeTab === 'debts' ? 'selected' : ''}
+          type="button"
+          onClick={() => setActiveTab('debts')}
+        >Debts &amp; bills</button>
+        {activeTab !== 'debts' && (
+          <label className="plans-archived-toggle">
+            <input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} />
+            Include archived
+          </label>
+        )}
       </div>
 
       {pageError && <div className="error-banner" role="alert">{pageError}</div>}
@@ -323,7 +358,7 @@ function PlansPage({
             </article>
           ))}
         </section>
-      ) : (
+      ) : activeTab === 'income' ? (
         <section id="income-panel" role="tabpanel" aria-labelledby="income-tab" className="plans-list">
           <div className="local-note" role="note">
             Expected amounts are plans, not balances. A receipt becomes actual income only when you record it.
@@ -389,6 +424,22 @@ function PlansPage({
             )
           })}
         </section>
+      ) : (
+        <div id="plans-debts-panel" role="tabpanel" aria-labelledby="plans-debts-tab">
+          <DebtsPage
+            wallets={wallets}
+            transactions={transactions}
+            categories={categories}
+            debts={debts}
+            obligations={obligations}
+            onSaveDebt={onSaveDebt}
+            onArchiveDebt={onArchiveDebt}
+            onSaveObligation={onSaveObligation}
+            onArchiveObligation={onArchiveObligation}
+            onSettleDebt={onSettleDebt}
+            onPayObligation={onPayObligation}
+          />
+        </div>
       )}
 
       {editingBudget !== undefined && (

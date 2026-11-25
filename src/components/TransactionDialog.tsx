@@ -52,6 +52,13 @@ export default function TransactionDialog({
   const dialogRef = useRef<HTMLElement>(null)
 
   const categoryKind = kind === 'income' || kind === 'expense' ? kind : null
+  const linkedSchedule = editingTransaction?.expectedIncomeId
+    ? 'income'
+    : editingTransaction?.debtSettlementId
+      ? 'debt'
+      : editingTransaction?.obligationId
+        ? 'obligation'
+        : undefined
   const availableCategories = categoryKind
     ? categories.filter((category) => category.kind === categoryKind)
     : []
@@ -140,6 +147,21 @@ export default function TransactionDialog({
             expectedIncomeDueOn: editingTransaction.expectedIncomeDueOn,
           }
         : {}),
+      ...(editingTransaction?.debtSettlementId &&
+      editingTransaction.debtSettlementDueOn &&
+      editingTransaction.debtSettlementExcludedFromTotals !== undefined
+        ? {
+            debtSettlementId: editingTransaction.debtSettlementId,
+            debtSettlementDueOn: editingTransaction.debtSettlementDueOn,
+            debtSettlementExcludedFromTotals: editingTransaction.debtSettlementExcludedFromTotals,
+          }
+        : {}),
+      ...(editingTransaction?.obligationId && editingTransaction.obligationDueOn
+        ? {
+            obligationId: editingTransaction.obligationId,
+            obligationDueOn: editingTransaction.obligationDueOn,
+          }
+        : {}),
       ...(kind === 'transfer'
         ? { toWalletId, feeCentavos: feeCentavos ?? undefined }
         : {}),
@@ -185,7 +207,7 @@ export default function TransactionDialog({
             <select
               name="kind"
               value={kind}
-              disabled={Boolean(editingTransaction?.expectedIncomeId)}
+              disabled={Boolean(linkedSchedule)}
               onChange={(event) => {
                 if (isTransactionKind(event.target.value)) {
                   setKind(event.target.value)
@@ -199,8 +221,14 @@ export default function TransactionDialog({
               <option value="adjustment">Balance adjustment</option>
             </select>
           </label>
-          {editingTransaction?.expectedIncomeId && (
-            <p className="field-note">This receipt is linked to an expected-income schedule. Its type stays as income; deleting it will reopen the expected amount.</p>
+          {linkedSchedule && (
+            <p className="field-note">
+              {linkedSchedule === 'income'
+                ? 'This receipt is linked to expected income. Its type stays as income; deleting it reopens the expected amount.'
+                : linkedSchedule === 'debt'
+                  ? 'This entry is linked to a debt settlement. Its type stays fixed; deleting it reopens the settlement amount.'
+                  : 'This entry is linked to a bill payment. Its type stays as an expense; deleting it reopens the amount due.'}
+            </p>
           )}
 
           <div className="form-row">

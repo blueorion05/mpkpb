@@ -48,10 +48,13 @@
 
 ## Phase 4 — v0.4.0 Debts and upcoming obligations
 
-- [ ] Money owed and receivable; existing and new debts.
-- [ ] Partial payments/collections, settlement history, and payment-to-transaction links.
-- [ ] Upcoming bills, due/overdue dates, recurring obligations, and installments.
-- [ ] Double-counting prevention and financial calendar.
+- [x] Money owed and receivable; existing and new debts.
+- [x] Partial payments/collections, settlement history, and payment-to-transaction links.
+- [x] Upcoming bills, due/overdue dates, recurring obligations, and installments.
+- [x] Double-counting prevention for linked original transactions.
+- [x] v4-to-v5 IndexedDB migration, atomic reconciliation, financial regressions, and responsive browser workflows.
+
+**v0.4.0 debts and upcoming obligations complete.**
 
 ## Phase 5 — v0.5.0 Financial forecasting
 

@@ -8,7 +8,9 @@ import {
   defaultWalletIcon,
   getCategories,
   getBudgetPlans,
+  getDebts,
   getExpectedIncomes,
+  getObligations,
   getPreference,
   getTransactions,
   getWallets,
@@ -20,6 +22,10 @@ import {
   savePreference,
   saveBudgetPlan,
   saveExpectedIncome,
+  saveDebt,
+  archiveDebt,
+  saveObligation,
+  archiveObligation,
   archiveBudgetPlan,
   archiveExpectedIncome,
   updateWallet,
@@ -28,10 +34,15 @@ import {
   type WalletColor,
   type WalletIcon,
   type Wallet,
+  type UpdatedScheduledEvent,
 } from './db/database'
 import ActivityPage from './components/ActivityPage'
 import PlansPage from './components/PlansPage'
 import TransactionDialog from './components/TransactionDialog'
+import {
+  type DebtRecord,
+  type FinancialObligation,
+} from './domain/debts'
 import {
   calculateLedgerTotals,
   calculateWalletBalances,
@@ -120,6 +131,8 @@ function App() {
   const [categories, setCategories] = useState<TransactionCategory[]>([])
   const [budgetPlans, setBudgetPlans] = useState<BudgetPlan[]>([])
   const [expectedIncomes, setExpectedIncomes] = useState<ExpectedIncome[]>([])
+  const [debts, setDebts] = useState<DebtRecord[]>([])
+  const [obligations, setObligations] = useState<FinancialObligation[]>([])
   const [theme, setTheme] = useState<Theme>('system')
   const [displayName, setDisplayName] = useState('')
   const [balanceVisible, setBalanceVisible] = useState(true)
@@ -140,6 +153,23 @@ function App() {
   const walletDialogRef = useRef<HTMLElement>(null)
   const archiveDialogRef = useRef<HTMLElement>(null)
   const transactionDeleteDialogRef = useRef<HTMLElement>(null)
+
+  function applyScheduledEventUpdate(event: UpdatedScheduledEvent) {
+    if (!event) return
+    if (event.kind === 'expectedIncome') {
+      setExpectedIncomes((current) => current.some((item) => item.id === event.id)
+        ? current.map((item) => item.id === event.id ? event : item)
+        : [...current, event])
+    } else if (event.kind === 'debt') {
+      setDebts((current) => current.some((item) => item.id === event.id)
+        ? current.map((item) => item.id === event.id ? event : item)
+        : [...current, event])
+    } else {
+      setObligations((current) => current.some((item) => item.id === event.id)
+        ? current.map((item) => item.id === event.id ? event : item)
+        : [...current, event])
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -171,13 +201,17 @@ function App() {
       }
 
       try {
-        const [savedBudgets, savedExpectedIncomes] = await Promise.all([
+        const [savedBudgets, savedExpectedIncomes, savedDebts, savedObligations] = await Promise.all([
           getBudgetPlans(),
           getExpectedIncomes(),
+          getDebts(),
+          getObligations(),
         ])
         if (!active) return
         setBudgetPlans(savedBudgets)
         setExpectedIncomes(savedExpectedIncomes)
+        setDebts(savedDebts)
+        setObligations(savedObligations)
         setPlanningLoadError(false)
       } catch (error) {
         if (active) {
@@ -436,18 +470,14 @@ function App() {
   }
 
   async function handleSaveTransaction(transaction: LedgerTransaction) {
-    const updatedExpectedIncome = await saveTransaction(transaction)
+    const updatedEvent = await saveTransaction(transaction)
     setTransactions((current) => {
       const exists = current.some((item) => item.id === transaction.id)
       return exists
         ? current.map((item) => item.id === transaction.id ? transaction : item)
         : [...current, transaction]
     })
-    if (updatedExpectedIncome) {
-      setExpectedIncomes((current) => current.map((item) =>
-        item.id === updatedExpectedIncome.id ? updatedExpectedIncome : item,
-      ))
-    }
+    applyScheduledEventUpdate(updatedEvent)
     setSuccessMessage(
       `${transaction.description} ${editingTransaction ? 'updated' : 'saved'} on this device.`,
     )
@@ -481,13 +511,9 @@ function App() {
   async function confirmDeleteTransaction() {
     if (!transactionToDelete) return
     try {
-      const updatedExpectedIncome = await deleteTransaction(transactionToDelete.id)
+      const updatedEvent = await deleteTransaction(transactionToDelete.id)
       setTransactions((current) => current.filter((item) => item.id !== transactionToDelete.id))
-      if (updatedExpectedIncome) {
-        setExpectedIncomes((current) => current.map((item) =>
-          item.id === updatedExpectedIncome.id ? updatedExpectedIncome : item,
-        ))
-      }
+      applyScheduledEventUpdate(updatedEvent)
       setSuccessMessage(`${transactionToDelete.description} removed from your ledger.`)
       setTransactionToDelete(null)
     } catch (error) {
@@ -542,6 +568,34 @@ function App() {
     setSuccessMessage(`${expected.description} archived. Its receipt history stays saved.`)
   }
 
+  async function handleSaveDebt(debt: DebtRecord) {
+    await saveDebt(debt)
+    setDebts((current) => current.some((item) => item.id === debt.id)
+      ? current.map((item) => item.id === debt.id ? debt : item)
+      : [...current, debt])
+    setSuccessMessage(`${debt.name} saved on this device.`)
+  }
+
+  async function handleArchiveDebt(debt: DebtRecord) {
+    const archived = await archiveDebt(debt)
+    setDebts((current) => current.map((item) => item.id === archived.id ? archived : item))
+    setSuccessMessage(`${debt.name} archived. Its settlement history stays saved.`)
+  }
+
+  async function handleSaveObligation(obligation: FinancialObligation) {
+    await saveObligation(obligation)
+    setObligations((current) => current.some((item) => item.id === obligation.id)
+      ? current.map((item) => item.id === obligation.id ? obligation : item)
+      : [...current, obligation])
+    setSuccessMessage(`${obligation.description} saved on this device.`)
+  }
+
+  async function handleArchiveObligation(obligation: FinancialObligation) {
+    const archived = await archiveObligation(obligation)
+    setObligations((current) => current.map((item) => item.id === archived.id ? archived : item))
+    setSuccessMessage(`${obligation.description} archived. Its payment history stays saved.`)
+  }
+
   async function handleReceiveIncome(
     expected: ExpectedIncome,
     amountCentavos: number,
@@ -561,14 +615,61 @@ function App() {
       updatedAt: now,
       ...(expected.categoryId ? { categoryId: expected.categoryId } : {}),
     }
-    const updatedExpectedIncome = await saveTransaction(transaction)
+    const updatedEvent = await saveTransaction(transaction)
     setTransactions((current) => [...current, transaction])
-    if (updatedExpectedIncome) {
-      setExpectedIncomes((current) => current.map((item) =>
-        item.id === updatedExpectedIncome.id ? updatedExpectedIncome : item,
-      ))
-    }
+    applyScheduledEventUpdate(updatedEvent)
     setSuccessMessage(`${formatPHP(amountCentavos)} received and added to your ledger.`)
+  }
+
+  async function handleSettleDebt(
+    debt: DebtRecord,
+    amountCentavos: number,
+    dueOn: string,
+  ) {
+    const now = new Date().toISOString()
+    const transaction: LedgerTransaction = {
+      id: crypto.randomUUID(),
+      kind: debt.direction === 'payable' ? 'expense' : 'income',
+      occurredOn: localDateInput(),
+      description: `${debt.direction === 'payable' ? 'Debt payment' : 'Debt collection'}: ${debt.name}`,
+      amountCentavos,
+      walletId: debt.walletId,
+      debtSettlementId: debt.id,
+      debtSettlementDueOn: dueOn,
+      debtSettlementExcludedFromTotals: Boolean(debt.principalTransactionId),
+      createdAt: now,
+      updatedAt: now,
+      ...(debt.categoryId ? { categoryId: debt.categoryId } : {}),
+    }
+    const updatedEvent = await saveTransaction(transaction)
+    setTransactions((current) => [...current, transaction])
+    applyScheduledEventUpdate(updatedEvent)
+    setSuccessMessage(`${formatPHP(amountCentavos)} ${debt.direction === 'payable' ? 'payment' : 'collection'} recorded in your ledger.`)
+  }
+
+  async function handlePayObligation(
+    obligation: FinancialObligation,
+    amountCentavos: number,
+    dueOn: string,
+  ) {
+    const now = new Date().toISOString()
+    const transaction: LedgerTransaction = {
+      id: crypto.randomUUID(),
+      kind: 'expense',
+      occurredOn: localDateInput(),
+      description: obligation.description,
+      amountCentavos,
+      walletId: obligation.walletId,
+      obligationId: obligation.id,
+      obligationDueOn: dueOn,
+      createdAt: now,
+      updatedAt: now,
+      ...(obligation.categoryId ? { categoryId: obligation.categoryId } : {}),
+    }
+    const updatedEvent = await saveTransaction(transaction)
+    setTransactions((current) => [...current, transaction])
+    applyScheduledEventUpdate(updatedEvent)
+    setSuccessMessage(`${formatPHP(amountCentavos)} bill payment recorded in your ledger.`)
   }
 
   const currentLabel = pages.find((item) => item.id === page)?.label ?? 'Home'
@@ -713,6 +814,8 @@ function App() {
               categories={categories}
               budgetPlans={budgetPlans}
               expectedIncomes={expectedIncomes}
+              debts={debts}
+              obligations={obligations}
               loading={loading}
               dataUnavailable={planningLoadError}
               onSaveBudget={handleSaveBudget}
@@ -722,6 +825,12 @@ function App() {
               onArchiveExpectedIncome={handleArchiveExpectedIncome}
               onCreateCategory={handleCreateCategory}
               onReceiveIncome={handleReceiveIncome}
+              onSaveDebt={handleSaveDebt}
+              onArchiveDebt={handleArchiveDebt}
+              onSaveObligation={handleSaveObligation}
+              onArchiveObligation={handleArchiveObligation}
+              onSettleDebt={handleSettleDebt}
+              onPayObligation={handlePayObligation}
             />
           )}
           {page === 'more' && <SettingsPage theme={theme} onThemeChange={(next) => void changeTheme(next)} />}
@@ -855,6 +964,10 @@ function App() {
             <p id="delete-transaction-description">
               {transactionToDelete.description} will be removed. Wallet balances will be recalculated from the remaining history.
               {transactionToDelete.expectedIncomeId && ' Its expected-income schedule will reopen the amount.'}
+              {transactionToDelete.debtSettlementId && ' Its debt settlement will reopen in the debt history.'}
+              {transactionToDelete.obligationId && ' Its bill payment will reopen the amount due.'}
+              {debts.some((debt) => debt.principalTransactionId === transactionToDelete.id) &&
+                ' This is linked as an original debt transaction; clear that link before deleting it.'}
             </p>
             <div className="dialog-actions">
               <button className="button button-quiet" type="button" autoFocus onClick={() => setTransactionToDelete(null)}>Keep transaction</button>

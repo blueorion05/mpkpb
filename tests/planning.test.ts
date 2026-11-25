@@ -131,3 +131,14 @@ test('partial and full receipts update the occurrence without changing current b
     status: 'due',
   })
 })
+
+test('removing an earlier receipt preserves later transactions in the schedule history', () => {
+  const expected = incomeSchedule()
+  const nextDueOn = nextIncomeOccurrence(expected, todayOnly)
+  const first = updateExpectedIncomeReceipt(expected, receipt(100_000, 'receipt-first'), todayOnly)
+  const second = updateExpectedIncomeReceipt(first, receipt(100_000, 'receipt-next', nextDueOn), todayOnly)
+  const updated = removeExpectedIncomeReceipt(second, 'receipt-first', new Date().toISOString())
+  assert.equal(isExpectedIncome(updated), true)
+  assert.equal(updated.receipts.length, 1)
+  assert.equal(getExpectedIncomeProgress(updated, todayOnly).dueOn, todayOnly)
+})

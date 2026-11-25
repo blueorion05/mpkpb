@@ -2,7 +2,7 @@
 
 MPKPB? is a local-first personal finance application for Filipino users. It helps you track wallets and budgets, understand upcoming cash flow, and get a little Taglish encouragement — without an account or cloud database.
 
-The v0.3.0 foundation includes responsive onboarding, customizable wallets, protected funds, themes and balance privacy, an income/expense/transfer ledger, category-based budget plans, and expected income with confidence levels, recurring schedules, and partial receipts. Balances derive from posted ledger entries; expected income only changes a balance after a receipt is posted. Debts, forecasting, backup/restore, and PWA support remain later milestones.
+The v0.4.0 foundation includes responsive onboarding, customizable wallets, protected funds, themes and balance privacy, an income/expense/transfer ledger, category-based budget plans, expected income, debt balances, and upcoming bills. Balances derive from posted ledger entries; expected income only changes a balance after a receipt is posted, and debt or bill payments change balances only when recorded. Linking an original debt transaction prevents later settlements from double-counting that income or expense. Forecasting, analytics, backup/restore, and PWA support remain later milestones.
 
 ## Development
 
@@ -17,7 +17,7 @@ npm run typecheck
 npm run build
 ```
 
-MPKPB? stores wallets, transactions, categories, budget plans, expected income, and preferences in this browser's IndexedDB. Posted transfers are neutral to income/expense totals; only their fees count as expenses. Expected income is not treated as available money before receipt. The app has no backend, account, analytics, or financial API; financial data stays on this device. Clearing site storage removes local records; backup and restore are planned.
+MPKPB? stores wallets, transactions, categories, budget plans, expected income, debts, bills, and preferences in this browser's IndexedDB. Posted transfers are neutral to income/expense totals; only their fees count as expenses. Expected income is not treated as available money before receipt. Planned bills do not affect balances until paid. The app has no backend, account, analytics, or financial API; financial data stays on this device. Clearing site storage removes local records; backup and restore are planned.
 
 ## Project documentation
 

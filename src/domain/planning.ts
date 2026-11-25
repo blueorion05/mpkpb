@@ -1,8 +1,14 @@
 import { isLedgerTransaction, type LedgerTransaction, type TransactionCategory } from './ledger.ts'
 import { sumCentavos } from './money.ts'
+import {
+  isDateOnly,
+  isRecurrenceFrequency,
+  nextRecurringDate,
+  type RecurrenceFrequency,
+} from './recurrence.ts'
 
 export type IncomeConfidence = 'low' | 'medium' | 'high'
-export type IncomeRecurrence = 'none' | 'weekly' | 'biweekly' | 'monthly'
+export type IncomeRecurrence = RecurrenceFrequency
 
 export interface BudgetCategoryLimit {
   categoryId: string
@@ -66,12 +72,6 @@ export interface ExpectedIncomeProgress {
   status: 'upcoming' | 'due' | 'overdue' | 'received'
 }
 
-export function isDateOnly(value: unknown): value is string {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-  const date = new Date(`${value}T00:00:00.000Z`)
-  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
-}
-
 function isTimestamp(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(Date.parse(value))
 }
@@ -85,7 +85,7 @@ function isIncomeConfidence(value: unknown): value is IncomeConfidence {
 }
 
 function isIncomeRecurrence(value: unknown): value is IncomeRecurrence {
-  return value === 'none' || value === 'weekly' || value === 'biweekly' || value === 'monthly'
+  return isRecurrenceFrequency(value)
 }
 
 export function isBudgetPlan(value: unknown): value is BudgetPlan {
@@ -195,23 +195,7 @@ export function normalizePlanName(name: string): string {
 }
 
 export function nextIncomeOccurrence(expected: ExpectedIncome, dueOn: string): string {
-  if (!isDateOnly(dueOn) || !isIncomeRecurrence(expected.recurrence) || expected.recurrence === 'none') {
-    throw new TypeError('A recurring expected income and valid due date are required.')
-  }
-  const date = new Date(`${dueOn}T00:00:00.000Z`)
-  if (expected.recurrence === 'weekly') date.setUTCDate(date.getUTCDate() + 7)
-  if (expected.recurrence === 'biweekly') date.setUTCDate(date.getUTCDate() + 14)
-  if (expected.recurrence === 'monthly') {
-    const targetMonth = date.getUTCMonth() + 1
-    const lastDay = new Date(Date.UTC(date.getUTCFullYear(), targetMonth + 1, 0)).getUTCDate()
-    date.setUTCDate(1)
-    date.setUTCMonth(targetMonth)
-    date.setUTCDate(Math.min(expected.monthlyAnchorDay, lastDay))
-  }
-  if (date.getUTCFullYear() > 9999) {
-    throw new RangeError('The next recurring income date is outside the supported calendar range.')
-  }
-  return date.toISOString().slice(0, 10)
+  return nextRecurringDate(dueOn, expected.recurrence, expected.monthlyAnchorDay)
 }
 
 function receiptsForDate(expected: ExpectedIncome, dueOn: string): IncomeReceipt[] {
@@ -284,11 +268,15 @@ export function updateExpectedIncomeReceipt(
     dueOn,
     amountCentavos: transaction.amountCentavos,
   }
-  return {
+  const updated = {
     ...expected,
     receipts: [...otherReceipts, receipt],
     updatedAt: transaction.updatedAt,
   }
+  if (!isExpectedIncome(updated)) {
+    throw new Error('This change would make the expected-income receipt history inconsistent.')
+  }
+  return updated
 }
 
 export function removeExpectedIncomeReceipt(
@@ -299,11 +287,15 @@ export function removeExpectedIncomeReceipt(
   if (!isExpectedIncome(expected) || !transactionId || !isTimestamp(updatedAt)) {
     throw new TypeError('The expected income receipt could not be verified.')
   }
-  return {
+  const updated = {
     ...expected,
     receipts: expected.receipts.filter((receipt) => receipt.transactionId !== transactionId),
     updatedAt,
   }
+  if (!isExpectedIncome(updated)) {
+    throw new Error('Remove later receipts first to preserve the expected-income history.')
+  }
+  return updated
 }
 
 export function calculateBudgetProgress(
@@ -330,6 +322,7 @@ export function calculateBudgetProgress(
     const spentCentavos = sumCentavos(transactions
       .filter((entry) =>
         entry.kind === 'expense' &&
+        !entry.debtSettlementExcludedFromTotals &&
         entry.categoryId === limit.categoryId &&
         entry.occurredOn >= plan.startOn &&
         entry.occurredOn <= plan.endOn,

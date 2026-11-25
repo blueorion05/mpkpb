@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0 — Debts and upcoming obligations
+
+- Added payable and receivable debt records with one-time or recurring installment schedules, partial settlements, progress, and archival.
+- Added optional links to original ledger transactions so principal entries are counted once while subsequent settlements still change wallet balances.
+- Added upcoming bills with due/overdue status, recurrence, finite installments, partial payments, and payment history.
+- Made debt settlements and bill payments atomic with their ledger transactions; editing or deleting a linked payment reconciles its schedule.
+- Added v5 IndexedDB indexes without rewriting existing wallet, ledger, budget, or scheduled-income data.
+- Added centavo-level financial regression coverage for installment remainders, overdue status, budget exclusions, and safe history deletion.
+
 ## 0.3.0 — Budget planning and expected income
 
 - Added multiple budget plans with custom date ranges, per-expense-category limits, utilization, remaining allowances, duplication, and archival.

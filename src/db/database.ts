@@ -13,6 +13,19 @@ import {
   type BudgetPlan,
   type ExpectedIncome,
 } from '../domain/planning.ts'
+import {
+  isDebtRecord,
+  isDebtSettlementTransaction,
+  isFinancialObligation,
+  isObligationPaymentTransaction,
+  removeDebtSettlement,
+  removeObligationPayment,
+  updateDebtSettlement,
+  updateObligationPayment,
+  validateDebtReferences,
+  type DebtRecord,
+  type FinancialObligation,
+} from '../domain/debts.ts'
 
 export type WalletType =
   | 'Cash'
@@ -47,7 +60,7 @@ interface Preference {
 }
 
 const DATABASE_NAME = 'mpkpb'
-const DATABASE_VERSION = 4
+const DATABASE_VERSION = 5
 const STORE_NAMES = [
   'wallets',
   'transactions',
@@ -180,6 +193,23 @@ function openDatabase(): Promise<IDBDatabase> {
         const budgets = request.transaction?.objectStore('budgets')
         if (budgets && !budgets.indexNames.contains('byStartOn')) {
           budgets.createIndex('byStartOn', 'startOn')
+        }
+
+        if (event.newVersion !== null && event.newVersion >= 5) {
+          const transactions = request.transaction?.objectStore('transactions')
+          if (transactions && !transactions.indexNames.contains('byDebtSettlement')) {
+            transactions.createIndex('byDebtSettlement', 'debtSettlementId')
+          }
+          if (transactions && !transactions.indexNames.contains('byObligation')) {
+            transactions.createIndex('byObligation', 'obligationId')
+          }
+          const debts = request.transaction?.objectStore('debts')
+          if (debts && !debts.indexNames.contains('byDirection')) {
+            debts.createIndex('byDirection', 'direction')
+          }
+          if (debts && !debts.indexNames.contains('byPrincipalTransaction')) {
+            debts.createIndex('byPrincipalTransaction', 'principalTransactionId')
+          }
         }
         const scheduledEvents = request.transaction?.objectStore('scheduledEvents')
         if (scheduledEvents && !scheduledEvents.indexNames.contains('byDueOn')) {
@@ -364,19 +394,28 @@ export async function getTransactions(): Promise<LedgerTransaction[]> {
   return results
 }
 
-export async function saveTransaction(entry: LedgerTransaction): Promise<ExpectedIncome | undefined> {
+export type UpdatedScheduledEvent = ExpectedIncome | DebtRecord | FinancialObligation | undefined
+
+function localDateOnly(): string {
+  const date = new Date()
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+export async function saveTransaction(entry: LedgerTransaction): Promise<UpdatedScheduledEvent> {
   if (!isLedgerTransaction(entry)) {
     throw new Error('The transaction details are invalid. Please review the amount and wallets.')
   }
 
   const database = await openDatabase()
-  const storeNames = ['wallets', 'transactions', 'scheduledEvents']
+  const storeNames = ['wallets', 'transactions', 'scheduledEvents', 'debts']
   if (entry.categoryId) storeNames.push('categories')
   const transaction = database.transaction(storeNames, 'readwrite')
   const completed = transactionComplete(transaction)
   const transactions = transaction.objectStore('transactions')
   const scheduledEvents = transaction.objectStore('scheduledEvents')
+  const debts = transaction.objectStore('debts')
   const previousRequest = transactions.get(entry.id)
+  const principalRequest = debts.index('byPrincipalTransaction').getAll(entry.id)
   const checks: {
     request: IDBRequest<unknown>
     isValid: (value: unknown) => boolean
@@ -405,47 +444,150 @@ export async function saveTransaction(entry: LedgerTransaction): Promise<Expecte
 
   let validationError: Error | undefined
   let candidate = entry
-  let previous: LedgerTransaction | undefined
+  let principalDebts: unknown[] | undefined
   let previousResolved = false
+  let principalResolved = false
   let pendingChecks = checks.length
-  let expectedLookupStarted = false
-  let updatedExpectedIncome: ExpectedIncome | undefined
+  let linkedLookupStarted = false
+  let updatedEvent: UpdatedScheduledEvent
   function fail(message: string) {
     if (validationError) return
     validationError = new Error(message)
     transaction.abort()
   }
+  function preserveExistingLink(saved: LedgerTransaction) {
+    if (isExpectedIncomeReceipt(saved)) {
+      if (
+        (entry.expectedIncomeId !== undefined && entry.expectedIncomeId !== saved.expectedIncomeId) ||
+        (entry.expectedIncomeDueOn !== undefined && entry.expectedIncomeDueOn !== saved.expectedIncomeDueOn) ||
+        entry.debtSettlementId !== undefined ||
+        entry.obligationId !== undefined
+      ) {
+        fail('A scheduled income receipt must remain linked to its original expected-income occurrence.')
+        return
+      }
+      candidate = {
+        ...entry,
+        expectedIncomeId: saved.expectedIncomeId,
+        expectedIncomeDueOn: saved.expectedIncomeDueOn,
+      }
+    } else if (isDebtSettlementTransaction(saved)) {
+      if (
+        (entry.debtSettlementId !== undefined && entry.debtSettlementId !== saved.debtSettlementId) ||
+        (entry.debtSettlementDueOn !== undefined && entry.debtSettlementDueOn !== saved.debtSettlementDueOn) ||
+        (entry.debtSettlementExcludedFromTotals !== undefined &&
+          entry.debtSettlementExcludedFromTotals !== saved.debtSettlementExcludedFromTotals) ||
+        entry.expectedIncomeId !== undefined ||
+        entry.obligationId !== undefined
+      ) {
+        fail('A debt settlement must remain linked to its original debt occurrence.')
+        return
+      }
+      candidate = {
+        ...entry,
+        debtSettlementId: saved.debtSettlementId,
+        debtSettlementDueOn: saved.debtSettlementDueOn,
+        debtSettlementExcludedFromTotals: saved.debtSettlementExcludedFromTotals,
+      }
+    } else if (isObligationPaymentTransaction(saved)) {
+      if (
+        (entry.obligationId !== undefined && entry.obligationId !== saved.obligationId) ||
+        (entry.obligationDueOn !== undefined && entry.obligationDueOn !== saved.obligationDueOn) ||
+        entry.expectedIncomeId !== undefined ||
+        entry.debtSettlementId !== undefined
+      ) {
+        fail('An obligation payment must remain linked to its original bill occurrence.')
+        return
+      }
+      candidate = {
+        ...entry,
+        obligationId: saved.obligationId,
+        obligationDueOn: saved.obligationDueOn,
+      }
+    }
+    if (!isLedgerTransaction(candidate)) {
+      fail('A linked payment must keep its original transaction type.')
+    }
+  }
   function commitWhenReady() {
-    if (validationError || !previousResolved || pendingChecks > 0) return
-
-    const previousReceipt = previous && isExpectedIncomeReceipt(previous) ? previous : undefined
-    const candidateReceipt = isExpectedIncomeReceipt(candidate) ? candidate : undefined
-    if (previousReceipt && candidateReceipt &&
-      (previousReceipt.expectedIncomeId !== candidateReceipt.expectedIncomeId ||
-        previousReceipt.expectedIncomeDueOn !== candidateReceipt.expectedIncomeDueOn)) {
-      fail('A scheduled income receipt must remain linked to its original expected-income occurrence.')
+    if (validationError || !previousResolved || !principalResolved || pendingChecks > 0) return
+    if (!principalDebts || !principalDebts.every(isDebtRecord)) {
+      fail('Saved debt data could not be verified. No transaction was saved.')
       return
     }
-    if (!candidateReceipt) {
+    if (principalDebts.some((debt) =>
+      debt.amountCentavos !== candidate.amountCentavos ||
+      candidate.kind !== (debt.direction === 'payable' ? 'expense' : 'income'),
+    )) {
+      fail('The original debt transaction must keep its amount and transaction type.')
+      return
+    }
+
+    const candidateReceipt = isExpectedIncomeReceipt(candidate) ? candidate : undefined
+    const candidateSettlement = isDebtSettlementTransaction(candidate) ? candidate : undefined
+    const candidatePayment = isObligationPaymentTransaction(candidate) ? candidate : undefined
+    if (!candidateReceipt && !candidateSettlement && !candidatePayment) {
       transactions.put(candidate)
       return
     }
-    if (expectedLookupStarted) return
-    expectedLookupStarted = true
-    const expectedRequest = scheduledEvents.get(candidateReceipt.expectedIncomeId)
-    expectedRequest.onsuccess = () => {
-      const expected = expectedRequest.result
-      if (!isExpectedIncome(expected)) {
-        fail('The linked expected-income schedule could not be verified. No transaction was saved.')
+    if (linkedLookupStarted) return
+    linkedLookupStarted = true
+    if (candidateReceipt) {
+      const expectedRequest = scheduledEvents.get(candidateReceipt.expectedIncomeId)
+      expectedRequest.onsuccess = () => {
+        if (!isExpectedIncome(expectedRequest.result)) {
+          fail('The linked expected-income schedule could not be verified. No transaction was saved.')
+          return
+        }
+        try {
+          const updated = updateExpectedIncomeReceipt(expectedRequest.result, candidateReceipt)
+          scheduledEvents.put(updated)
+          transactions.put(candidateReceipt)
+          updatedEvent = updated
+        } catch (error) {
+          fail(error instanceof Error ? error.message : 'The expected-income receipt could not be saved.')
+        }
+      }
+      return
+    }
+    if (candidateSettlement) {
+      const debtRequest = debts.get(candidateSettlement.debtSettlementId)
+      debtRequest.onsuccess = () => {
+        const debt = debtRequest.result
+        if (!isDebtRecord(debt)) {
+          fail('The linked debt could not be verified. No transaction was saved.')
+          return
+        }
+        if (candidateSettlement.debtSettlementExcludedFromTotals !== Boolean(debt.principalTransactionId)) {
+          fail('Debt repayments can only be excluded from expense totals when the original transaction is linked.')
+          return
+        }
+        try {
+          const updated = updateDebtSettlement(debt, candidateSettlement, localDateOnly())
+          debts.put(updated)
+          transactions.put(candidateSettlement)
+          updatedEvent = updated
+        } catch (error) {
+          fail(error instanceof Error ? error.message : 'The debt settlement could not be saved.')
+        }
+      }
+      return
+    }
+    if (!candidatePayment) return
+    const obligationRequest = scheduledEvents.get(candidatePayment.obligationId)
+    obligationRequest.onsuccess = () => {
+      const obligation = obligationRequest.result
+      if (!isFinancialObligation(obligation)) {
+        fail('The linked bill could not be verified. No transaction was saved.')
         return
       }
       try {
-        const updated = updateExpectedIncomeReceipt(expected, candidateReceipt)
+        const updated = updateObligationPayment(obligation, candidatePayment, localDateOnly())
         scheduledEvents.put(updated)
-        transactions.put(candidateReceipt)
-        updatedExpectedIncome = updated
+        transactions.put(candidatePayment)
+        updatedEvent = updated
       } catch (error) {
-        fail(error instanceof Error ? error.message : 'The expected-income receipt could not be saved.')
+        fail(error instanceof Error ? error.message : 'The bill payment could not be saved.')
       }
     }
   }
@@ -457,27 +599,14 @@ export async function saveTransaction(entry: LedgerTransaction): Promise<Expecte
         fail('The existing transaction could not be verified. No changes were made.')
         return
       }
-      previous = saved
-      if (isExpectedIncomeReceipt(saved)) {
-        if (
-          (entry.expectedIncomeId !== undefined && entry.expectedIncomeId !== saved.expectedIncomeId) ||
-          (entry.expectedIncomeDueOn !== undefined && entry.expectedIncomeDueOn !== saved.expectedIncomeDueOn)
-        ) {
-          fail('A scheduled income receipt must remain linked to its original expected-income occurrence.')
-          return
-        }
-        candidate = {
-          ...entry,
-          expectedIncomeId: saved.expectedIncomeId,
-          expectedIncomeDueOn: saved.expectedIncomeDueOn,
-        }
-        if (!isLedgerTransaction(candidate)) {
-          fail('A scheduled income receipt must remain an income transaction.')
-          return
-        }
-      }
+      preserveExistingLink(saved)
     }
     previousResolved = true
+    commitWhenReady()
+  }
+  principalRequest.onsuccess = () => {
+    principalDebts = principalRequest.result
+    principalResolved = true
     commitWhenReady()
   }
 
@@ -498,53 +627,120 @@ export async function saveTransaction(entry: LedgerTransaction): Promise<Expecte
     if (validationError) throw validationError
     throw error
   }
-  return updatedExpectedIncome
+  return updatedEvent
 }
 
-export async function deleteTransaction(id: string): Promise<ExpectedIncome | undefined> {
+export async function deleteTransaction(id: string): Promise<UpdatedScheduledEvent> {
   if (!id) throw new Error('A transaction ID is required.')
   const database = await openDatabase()
-  const transaction = database.transaction(['transactions', 'scheduledEvents'], 'readwrite')
+  const transaction = database.transaction(['transactions', 'scheduledEvents', 'debts'], 'readwrite')
   const completed = transactionComplete(transaction)
   const transactions = transaction.objectStore('transactions')
   const scheduledEvents = transaction.objectStore('scheduledEvents')
+  const debts = transaction.objectStore('debts')
   const existingRequest = transactions.get(id)
+  const principalRequest = debts.index('byPrincipalTransaction').getAll(id)
   let validationError: Error | undefined
-  let updatedExpectedIncome: ExpectedIncome | undefined
-  existingRequest.onsuccess = () => {
-    const existing = existingRequest.result
-    if (existing !== undefined && !isLedgerTransaction(existing)) {
-      validationError = new Error('The saved transaction could not be verified. No data was changed.')
-      transaction.abort()
+  let updatedEvent: UpdatedScheduledEvent
+  let existing: unknown
+  let principalDebts: unknown[] | undefined
+  let existingResolved = false
+  let principalResolved = false
+  let linkLookupStarted = false
+  function fail(message: string) {
+    if (validationError) return
+    validationError = new Error(message)
+    transaction.abort()
+  }
+  function finishWhenReady() {
+    if (validationError || !existingResolved || !principalResolved) return
+    if (!principalDebts || !principalDebts.every(isDebtRecord)) {
+      fail('Saved debt data could not be verified. No transaction was deleted.')
       return
     }
-    if (existing && isExpectedIncomeReceipt(existing)) {
-      const expectedRequest = scheduledEvents.get(existing.expectedIncomeId)
+    if (principalDebts.length > 0) {
+      fail('This transaction is linked to an existing debt. Remove that debt link before deleting it.')
+      return
+    }
+    if (existing === undefined) return
+    if (!isLedgerTransaction(existing)) {
+      fail('The saved transaction could not be verified. No data was changed.')
+      return
+    }
+    const savedTransaction = existing
+    if (linkLookupStarted) return
+    if (isExpectedIncomeReceipt(savedTransaction)) {
+      linkLookupStarted = true
+      const expectedRequest = scheduledEvents.get(savedTransaction.expectedIncomeId)
       expectedRequest.onsuccess = () => {
         if (!isExpectedIncome(expectedRequest.result)) {
-          validationError = new Error('The linked expected-income schedule could not be verified. No data was changed.')
-          transaction.abort()
+          fail('The linked expected-income schedule could not be verified. No data was changed.')
           return
         }
         try {
           const updated = removeExpectedIncomeReceipt(
             expectedRequest.result,
-            existing.id,
+            savedTransaction.id,
             new Date().toISOString(),
           )
           scheduledEvents.put(updated)
           transactions.delete(id)
-          updatedExpectedIncome = updated
+          updatedEvent = updated
         } catch (error) {
-          validationError = error instanceof Error
-            ? error
-            : new Error('The linked expected-income receipt could not be removed.')
-          transaction.abort()
+          fail(error instanceof Error ? error.message : 'The linked income receipt could not be removed.')
         }
       }
-    } else {
-      transactions.delete(id)
+      return
     }
+    if (isDebtSettlementTransaction(savedTransaction)) {
+      linkLookupStarted = true
+      const debtRequest = debts.get(savedTransaction.debtSettlementId)
+      debtRequest.onsuccess = () => {
+        if (!isDebtRecord(debtRequest.result)) {
+          fail('The linked debt could not be verified. No data was changed.')
+          return
+        }
+        try {
+          const updated = removeDebtSettlement(debtRequest.result, id, new Date().toISOString())
+          debts.put(updated)
+          transactions.delete(id)
+          updatedEvent = updated
+        } catch (error) {
+          fail(error instanceof Error ? error.message : 'The debt settlement could not be removed.')
+        }
+      }
+      return
+    }
+    if (isObligationPaymentTransaction(savedTransaction)) {
+      linkLookupStarted = true
+      const obligationRequest = scheduledEvents.get(savedTransaction.obligationId)
+      obligationRequest.onsuccess = () => {
+        if (!isFinancialObligation(obligationRequest.result)) {
+          fail('The linked bill could not be verified. No data was changed.')
+          return
+        }
+        try {
+          const updated = removeObligationPayment(obligationRequest.result, id, new Date().toISOString())
+          scheduledEvents.put(updated)
+          transactions.delete(id)
+          updatedEvent = updated
+        } catch (error) {
+          fail(error instanceof Error ? error.message : 'The bill payment could not be removed.')
+        }
+      }
+      return
+    }
+    transactions.delete(id)
+  }
+  existingRequest.onsuccess = () => {
+    existing = existingRequest.result
+    existingResolved = true
+    finishWhenReady()
+  }
+  principalRequest.onsuccess = () => {
+    principalDebts = principalRequest.result
+    principalResolved = true
+    finishWhenReady()
   }
   try {
     await completed
@@ -552,7 +748,7 @@ export async function deleteTransaction(id: string): Promise<ExpectedIncome | un
     if (validationError) throw validationError
     throw error
   }
-  return updatedExpectedIncome
+  return updatedEvent
 }
 
 export async function getCategories(): Promise<TransactionCategory[]> {
@@ -826,6 +1022,401 @@ export async function saveExpectedIncome(expected: ExpectedIncome): Promise<void
 export async function archiveExpectedIncome(expected: ExpectedIncome): Promise<ExpectedIncome> {
   const archived = { ...expected, archived: true, updatedAt: new Date().toISOString() }
   await saveExpectedIncome(archived)
+  return archived
+}
+
+export async function getDebts(): Promise<DebtRecord[]> {
+  const database = await openDatabase()
+  const transaction = database.transaction(['debts', 'transactions', 'wallets', 'categories'], 'readonly')
+  const completed = transactionComplete(transaction)
+  const [records, transactionRecords, walletRecords, categoryRecords] = await Promise.all([
+    requestResult<unknown[]>(transaction.objectStore('debts').getAll()),
+    requestResult<unknown[]>(transaction.objectStore('transactions').getAll()),
+    requestResult<unknown[]>(transaction.objectStore('wallets').getAll()),
+    requestResult<unknown[]>(transaction.objectStore('categories').getAll()),
+    completed,
+  ] as const)
+  if (!records.every(isDebtRecord)) {
+    throw new Error('Some saved debt data is invalid. No settlement progress was calculated.')
+  }
+  if (!transactionRecords.every(isLedgerTransaction) ||
+      !walletRecords.every(isWallet) ||
+      !categoryRecords.every(isTransactionCategory)) {
+    throw new Error('Saved ledger, wallet, or category data could not be verified. No debt progress was calculated.')
+  }
+  const wallets = new Set(walletRecords.map((wallet) => wallet.id))
+  const byId = new Map(transactionRecords.map((entry) => [entry.id, entry]))
+  const linkedSettlements = new Map(
+    transactionRecords.filter(isDebtSettlementTransaction).map((entry) => [entry.id, entry]),
+  )
+  const linkedPrincipals = new Set<string>()
+  for (const debt of records) {
+    if (!wallets.has(debt.walletId) || !validateDebtReferences(debt, categoryRecords)) {
+      throw new Error('A debt references a missing wallet or an incompatible category.')
+    }
+    if (debt.principalTransactionId) {
+      if (linkedPrincipals.has(debt.principalTransactionId)) {
+        throw new Error('An original ledger transaction is linked to more than one debt.')
+      }
+      linkedPrincipals.add(debt.principalTransactionId)
+      const principal = byId.get(debt.principalTransactionId)
+      const expectedKind = debt.direction === 'payable' ? 'expense' : 'income'
+      if (
+        !principal ||
+        principal.kind !== expectedKind ||
+        principal.amountCentavos !== debt.amountCentavos ||
+        isExpectedIncomeReceipt(principal) ||
+        isDebtSettlementTransaction(principal) ||
+        isObligationPaymentTransaction(principal)
+      ) {
+        throw new Error('A debt does not match its linked original ledger transaction.')
+      }
+    }
+    for (const settlement of debt.settlements) {
+      const linked = linkedSettlements.get(settlement.transactionId)
+      if (
+        !linked ||
+        linked.debtSettlementId !== debt.id ||
+        linked.debtSettlementDueOn !== settlement.dueOn ||
+        linked.amountCentavos !== settlement.amountCentavos ||
+        linked.kind !== (debt.direction === 'payable' ? 'expense' : 'income') ||
+        linked.debtSettlementExcludedFromTotals !== Boolean(debt.principalTransactionId)
+      ) {
+        throw new Error('A debt settlement does not match its linked ledger transaction.')
+      }
+      linkedSettlements.delete(settlement.transactionId)
+    }
+  }
+  if (linkedSettlements.size > 0) {
+    throw new Error('A ledger debt settlement is missing from its saved debt history.')
+  }
+  return records
+}
+
+export async function saveDebt(debt: DebtRecord): Promise<void> {
+  if (!isDebtRecord(debt)) {
+    throw new Error('The debt details are invalid. Review the amount, due date, and installment schedule.')
+  }
+  const database = await openDatabase()
+  const transaction = database.transaction(
+    ['debts', 'transactions', 'wallets', 'categories'],
+    'readwrite',
+  )
+  const completed = transactionComplete(transaction)
+  const debts = transaction.objectStore('debts')
+  const previousRequest = debts.get(debt.id)
+  const walletRequest = transaction.objectStore('wallets').get(debt.walletId)
+  const transactionsRequest = transaction.objectStore('transactions').getAll()
+  const categoryRequest = debt.categoryId
+    ? transaction.objectStore('categories').get(debt.categoryId)
+    : undefined
+  const principalRequest = debt.principalTransactionId
+    ? debts.index('byPrincipalTransaction').getAll(debt.principalTransactionId)
+    : undefined
+  let pending = 3 + (categoryRequest ? 1 : 0) + (principalRequest ? 1 : 0)
+  let previous: unknown
+  let wallet: unknown
+  let transactionRecords: unknown[] | undefined
+  let category: unknown
+  let categoryRecord: TransactionCategory | undefined
+  let principalRecords: unknown[] = []
+  let validCategory = !debt.categoryId
+  let validationError: Error | undefined
+  function fail(message: string) {
+    if (validationError) return
+    validationError = new Error(message)
+    transaction.abort()
+  }
+  function finishWhenReady() {
+    if (validationError || pending > 0) return
+    if (!isWallet(wallet)) {
+      fail('The selected wallet no longer exists.')
+      return
+    }
+    if (!validCategory) {
+      fail('The selected category is no longer available for this debt type.')
+      return
+    }
+    if (previous !== undefined && !isDebtRecord(previous)) {
+      fail('The existing debt could not be verified. No changes were made.')
+      return
+    }
+    if (!transactionRecords || !transactionRecords.every(isLedgerTransaction)) {
+      fail('Saved ledger data could not be verified. No debt was saved.')
+      return
+    }
+    if (!validateDebtReferences(debt, categoryRecord ? [categoryRecord] : [])) {
+      fail('The selected category is incompatible with this debt type.')
+      return
+    }
+    if (previous && (
+      previous.settlements.some((settlement) => !debt.settlements.some((item) =>
+        item.transactionId === settlement.transactionId &&
+        item.dueOn === settlement.dueOn &&
+        item.amountCentavos === settlement.amountCentavos,
+      )) ||
+      (previous.settlements.length > 0 &&
+        (previous.dueOn !== debt.dueOn ||
+          previous.recurrence !== debt.recurrence ||
+          previous.monthlyAnchorDay !== debt.monthlyAnchorDay ||
+          previous.installmentAmountCentavos !== debt.installmentAmountCentavos ||
+          previous.installmentCount !== debt.installmentCount ||
+          previous.principalTransactionId !== debt.principalTransactionId))
+    )) {
+      fail('Debt settlement history and its schedule cannot be removed or changed.')
+      return
+    }
+    if (!principalRecords.every(isDebtRecord) ||
+        principalRecords.some((item) => item.id !== debt.id)) {
+      fail('The original transaction is already linked to another debt or the debt data is invalid.')
+      return
+    }
+    const transactionById = new Map(transactionRecords.map((entry) => [entry.id, entry]))
+    if (debt.principalTransactionId) {
+      const principal = transactionById.get(debt.principalTransactionId)
+      if (
+        !principal ||
+        principal.kind !== (debt.direction === 'payable' ? 'expense' : 'income') ||
+        principal.amountCentavos !== debt.amountCentavos ||
+        isExpectedIncomeReceipt(principal) ||
+        isDebtSettlementTransaction(principal) ||
+        isObligationPaymentTransaction(principal)
+      ) {
+        fail('Link an existing income or expense transaction with the same amount as the debt.')
+        return
+      }
+    }
+    for (const settlement of debt.settlements) {
+      const linked = transactionById.get(settlement.transactionId)
+      if (
+        !linked ||
+        !isDebtSettlementTransaction(linked) ||
+        linked.debtSettlementId !== debt.id ||
+        linked.debtSettlementDueOn !== settlement.dueOn ||
+        linked.amountCentavos !== settlement.amountCentavos ||
+        linked.kind !== (debt.direction === 'payable' ? 'expense' : 'income') ||
+        linked.debtSettlementExcludedFromTotals !== Boolean(debt.principalTransactionId)
+      ) {
+        fail('Each debt settlement must match its linked ledger transaction.')
+        return
+      }
+    }
+    debts.put(debt)
+  }
+  previousRequest.onsuccess = () => {
+    previous = previousRequest.result
+    pending -= 1
+    finishWhenReady()
+  }
+  walletRequest.onsuccess = () => {
+    wallet = walletRequest.result
+    pending -= 1
+    finishWhenReady()
+  }
+  transactionsRequest.onsuccess = () => {
+    transactionRecords = transactionsRequest.result
+    pending -= 1
+    finishWhenReady()
+  }
+  if (categoryRequest) {
+    categoryRequest.onsuccess = () => {
+      category = categoryRequest.result
+      validCategory = isTransactionCategory(category) &&
+        category.kind === (debt.direction === 'payable' ? 'expense' : 'income')
+      if (validCategory && isTransactionCategory(category)) categoryRecord = category
+      pending -= 1
+      finishWhenReady()
+    }
+  }
+  if (principalRequest) {
+    principalRequest.onsuccess = () => {
+      principalRecords = principalRequest.result
+      pending -= 1
+      finishWhenReady()
+    }
+  }
+  try {
+    await completed
+  } catch (error) {
+    if (validationError) throw validationError
+    throw error
+  }
+}
+
+export async function archiveDebt(debt: DebtRecord): Promise<DebtRecord> {
+  const archived = { ...debt, archived: true, updatedAt: new Date().toISOString() }
+  await saveDebt(archived)
+  return archived
+}
+
+export async function getObligations(): Promise<FinancialObligation[]> {
+  const database = await openDatabase()
+  const transaction = database.transaction(
+    ['scheduledEvents', 'transactions', 'wallets', 'categories'],
+    'readonly',
+  )
+  const completed = transactionComplete(transaction)
+  const [records, transactionRecords, walletRecords, categoryRecords] = await Promise.all([
+    requestResult<unknown[]>(transaction.objectStore('scheduledEvents').index('byKind').getAll('obligation')),
+    requestResult<unknown[]>(transaction.objectStore('transactions').getAll()),
+    requestResult<unknown[]>(transaction.objectStore('wallets').getAll()),
+    requestResult<unknown[]>(transaction.objectStore('categories').getAll()),
+    completed,
+  ] as const)
+  if (!records.every(isFinancialObligation)) {
+    throw new Error('Some saved bill data is invalid. No payment progress was calculated.')
+  }
+  if (!transactionRecords.every(isLedgerTransaction) ||
+      !walletRecords.every(isWallet) ||
+      !categoryRecords.every(isTransactionCategory)) {
+    throw new Error('Saved ledger, wallet, or category data could not be verified. No bill progress was calculated.')
+  }
+  const wallets = new Set(walletRecords.map((wallet) => wallet.id))
+  const expenseCategories = new Set(
+    categoryRecords.filter((category) => category.kind === 'expense').map((category) => category.id),
+  )
+  const linkedPayments = new Map(
+    transactionRecords.filter(isObligationPaymentTransaction).map((entry) => [entry.id, entry]),
+  )
+  for (const obligation of records) {
+    if (
+      !wallets.has(obligation.walletId) ||
+      (obligation.categoryId !== undefined && !expenseCategories.has(obligation.categoryId))
+    ) {
+      throw new Error('A bill references a missing wallet or expense category.')
+    }
+    for (const payment of obligation.payments) {
+      const linked = linkedPayments.get(payment.transactionId)
+      if (
+        !linked ||
+        linked.obligationId !== obligation.id ||
+        linked.obligationDueOn !== payment.dueOn ||
+        linked.amountCentavos !== payment.amountCentavos
+      ) {
+        throw new Error('A bill payment does not match its linked ledger transaction.')
+      }
+      linkedPayments.delete(payment.transactionId)
+    }
+  }
+  if (linkedPayments.size > 0) {
+    throw new Error('A ledger bill payment is missing from its saved bill history.')
+  }
+  return records
+}
+
+export async function saveObligation(obligation: FinancialObligation): Promise<void> {
+  if (!isFinancialObligation(obligation)) {
+    throw new Error('The bill details are invalid. Review the amount, due date, and recurrence.')
+  }
+  const database = await openDatabase()
+  const transaction = database.transaction(
+    ['scheduledEvents', 'transactions', 'wallets', 'categories'],
+    'readwrite',
+  )
+  const completed = transactionComplete(transaction)
+  const events = transaction.objectStore('scheduledEvents')
+  const previousRequest = events.get(obligation.id)
+  const walletRequest = transaction.objectStore('wallets').get(obligation.walletId)
+  const transactionsRequest = transaction.objectStore('transactions').getAll()
+  const categoryRequest = obligation.categoryId
+    ? transaction.objectStore('categories').get(obligation.categoryId)
+    : undefined
+  let pending = 3 + (categoryRequest ? 1 : 0)
+  let previous: unknown
+  let wallet: unknown
+  let transactionRecords: unknown[] | undefined
+  let validCategory = !obligation.categoryId
+  let validationError: Error | undefined
+  function fail(message: string) {
+    if (validationError) return
+    validationError = new Error(message)
+    transaction.abort()
+  }
+  function finishWhenReady() {
+    if (validationError || pending > 0) return
+    if (!isWallet(wallet)) {
+      fail('The selected wallet no longer exists.')
+      return
+    }
+    if (!validCategory) {
+      fail('The selected category is no longer available for bills.')
+      return
+    }
+    if (previous !== undefined && !isFinancialObligation(previous)) {
+      fail('The ID is already used by another scheduled event. No bill was saved.')
+      return
+    }
+    if (!transactionRecords || !transactionRecords.every(isLedgerTransaction)) {
+      fail('Saved ledger data could not be verified. No bill was saved.')
+      return
+    }
+    if (previous && (
+      previous.payments.some((payment) => !obligation.payments.some((item) =>
+        item.transactionId === payment.transactionId &&
+        item.dueOn === payment.dueOn &&
+        item.amountCentavos === payment.amountCentavos,
+      )) ||
+      (previous.payments.length > 0 &&
+        (previous.dueOn !== obligation.dueOn ||
+          previous.recurrence !== obligation.recurrence ||
+          previous.monthlyAnchorDay !== obligation.monthlyAnchorDay ||
+          previous.installmentCount !== obligation.installmentCount))
+    )) {
+      fail('Bill payment history and its schedule cannot be removed or changed.')
+      return
+    }
+    const transactionById = new Map(transactionRecords.map((entry) => [entry.id, entry]))
+    for (const payment of obligation.payments) {
+      const linked = transactionById.get(payment.transactionId)
+      if (
+        !linked ||
+        !isObligationPaymentTransaction(linked) ||
+        linked.obligationId !== obligation.id ||
+        linked.obligationDueOn !== payment.dueOn ||
+        linked.amountCentavos !== payment.amountCentavos
+      ) {
+        fail('Each bill payment must match its linked ledger transaction.')
+        return
+      }
+    }
+    events.put(obligation)
+  }
+  previousRequest.onsuccess = () => {
+    previous = previousRequest.result
+    pending -= 1
+    finishWhenReady()
+  }
+  walletRequest.onsuccess = () => {
+    wallet = walletRequest.result
+    pending -= 1
+    finishWhenReady()
+  }
+  transactionsRequest.onsuccess = () => {
+    transactionRecords = transactionsRequest.result
+    pending -= 1
+    finishWhenReady()
+  }
+  if (categoryRequest) {
+    categoryRequest.onsuccess = () => {
+      const category = categoryRequest.result
+      validCategory = isTransactionCategory(category) && category.kind === 'expense'
+      pending -= 1
+      finishWhenReady()
+    }
+  }
+  try {
+    await completed
+  } catch (error) {
+    if (validationError) throw validationError
+    throw error
+  }
+}
+
+export async function archiveObligation(
+  obligation: FinancialObligation,
+): Promise<FinancialObligation> {
+  const archived = { ...obligation, archived: true, updatedAt: new Date().toISOString() }
+  await saveObligation(archived)
   return archived
 }
 
