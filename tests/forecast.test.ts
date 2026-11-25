@@ -287,6 +287,53 @@ test('caps the weekly safe-to-spend estimate at available headroom in a short fo
   assert.equal(expected.safeWeeklyCentavos, 8_000)
 })
 
+test('simulates a purchase as a hypothetical expense without mutating or saving the ledger', () => {
+  const baseRequest = request({
+    wallets: [wallet('wallet-1', 20_000)],
+    endOn: addDays(todayOnly, 3),
+  })
+  const baseline = scenario(calculateForecast(baseRequest), 'expected')
+  const withPurchase = scenario(calculateForecast({
+    ...baseRequest,
+    hypotheticalPurchase: {
+      walletId: 'wallet-1',
+      amountCentavos: 25_000,
+      occurredOn: addDays(todayOnly, 1),
+    },
+  }), 'expected')
+
+  assert.equal(baseline.endingTotalCentavos, 20_000)
+  assert.equal(withPurchase.endingTotalCentavos, -5_000)
+  assert.equal(withPurchase.events.some((event) => event.kind === 'purchase'), true)
+  assert.equal(baseRequest.transactions.length, 0)
+  assert.equal(withPurchase.walletSummaries[0].maximumShortageCentavos, 5_000)
+})
+
+test('rejects hypothetical purchases with invalid wallets, amounts, or dates', () => {
+  const baseRequest = request({
+    wallets: [wallet('wallet-1', 20_000)],
+    endOn: addDays(todayOnly, 3),
+  })
+  const purchase = {
+    walletId: 'wallet-1',
+    amountCentavos: 1_000,
+    occurredOn: addDays(todayOnly, 1),
+  }
+
+  assert.throws(() => calculateForecast({
+    ...baseRequest,
+    hypotheticalPurchase: { ...purchase, walletId: 'missing-wallet' },
+  }), /hypothetical purchase is invalid/)
+  assert.throws(() => calculateForecast({
+    ...baseRequest,
+    hypotheticalPurchase: { ...purchase, amountCentavos: 0 },
+  }), /hypothetical purchase is invalid/)
+  assert.throws(() => calculateForecast({
+    ...baseRequest,
+    hypotheticalPurchase: { ...purchase, occurredOn: addDays(todayOnly, 4) },
+  }), /hypothetical purchase is invalid/)
+})
+
 test('forecasts centavo-exact final debt installments after a partial payment', () => {
   const dueOn = todayOnly
   const transaction: LedgerTransaction = {

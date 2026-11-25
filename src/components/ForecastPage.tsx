@@ -5,6 +5,7 @@ import {
   calculateForecast,
   type ForecastScenario,
   type ForecastScenarioResult,
+  type ForecastRequest,
 } from '../domain/forecast'
 import type { LedgerTransaction } from '../domain/ledger'
 import type { ExpectedIncome } from '../domain/planning'
@@ -145,6 +146,13 @@ export default function ForecastPage({
   const [bufferInput, setBufferInput] = useState((safetyBufferCentavos / 100).toFixed(2))
   const [bufferError, setBufferError] = useState('')
   const [bufferSaving, setBufferSaving] = useState(false)
+  const [purchaseAmountInput, setPurchaseAmountInput] = useState('')
+  const [purchaseWalletId, setPurchaseWalletId] = useState('')
+  const [purchaseDate, setPurchaseDate] = useState(today)
+  const [hypotheticalPurchase, setHypotheticalPurchase] = useState<ForecastRequest['hypotheticalPurchase']>()
+  const [purchaseError, setPurchaseError] = useState('')
+  const purchaseWallet = purchaseWalletId || wallets.find((wallet) => !wallet.archived)?.id || ''
+  const availablePurchaseWallets = wallets.filter((wallet) => !wallet.archived)
 
   const forecast = useMemo(() => {
     if (loading || dataUnavailable || wallets.length === 0) {
@@ -161,6 +169,7 @@ export default function ForecastPage({
           today,
           endOn,
           safetyBufferCentavos,
+          hypotheticalPurchase,
         }),
         error: '',
       }
@@ -170,7 +179,7 @@ export default function ForecastPage({
         error: error instanceof Error ? error.message : 'The forecast could not be calculated.',
       }
     }
-  }, [wallets, transactions, expectedIncomes, debts, obligations, loading, dataUnavailable, today, endOn, safetyBufferCentavos])
+  }, [wallets, transactions, expectedIncomes, debts, obligations, loading, dataUnavailable, today, endOn, safetyBufferCentavos, hypotheticalPurchase])
 
   const selectedResult = forecast.results.find((result) => result.scenario === selectedScenario)
   const selectedWallet = wallets.find((wallet) => wallet.id === walletId)
@@ -221,6 +230,36 @@ export default function ForecastPage({
     }
   }
 
+  function simulatePurchase(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setPurchaseError('')
+    const amountCentavos = parsePesoToCentavos(purchaseAmountInput)
+    if (amountCentavos === null || amountCentavos <= 0) {
+      setPurchaseError('Enter a purchase amount greater than zero with no more than two decimal places.')
+      return
+    }
+    if (!availablePurchaseWallets.some((wallet) => wallet.id === purchaseWallet)) {
+      setPurchaseError('Choose a wallet for this what-if purchase.')
+      return
+    }
+    if (!purchaseDate || purchaseDate < today || purchaseDate > endOn) {
+      setPurchaseError('Choose a purchase date from today through the end of the forecast.')
+      return
+    }
+    setPurchaseWalletId(purchaseWallet)
+    setHypotheticalPurchase({
+      walletId: purchaseWallet,
+      amountCentavos,
+      occurredOn: purchaseDate,
+    })
+  }
+
+  function clearPurchaseSimulation() {
+    setHypotheticalPurchase(undefined)
+    setPurchaseAmountInput('')
+    setPurchaseError('')
+  }
+
   const maxEndOn = addDays(today, 3660)
 
   return (
@@ -241,7 +280,15 @@ export default function ForecastPage({
             min={today}
             max={maxEndOn}
             value={endOn}
-            onChange={(event) => setEndOn(event.target.value)}
+            onChange={(event) => {
+              const nextEndOn = event.target.value
+              setEndOn(nextEndOn)
+              if (purchaseDate > nextEndOn) setPurchaseDate(nextEndOn)
+              if (hypotheticalPurchase && hypotheticalPurchase.occurredOn > nextEndOn) {
+                setHypotheticalPurchase(undefined)
+                setPurchaseError('The simulation was cleared because its date is outside the updated forecast.')
+              }
+            }}
           />
         </label>
         <label className="field">
@@ -279,6 +326,47 @@ export default function ForecastPage({
         The safety buffer is reserved when calculating safe daily and weekly spending.
       </p>
       {bufferError && <p className="form-error" role="alert">{bufferError}</p>}
+      <section className="panel purchase-simulator" aria-label="What-if purchase simulator">
+        <div className="purchase-simulator-heading">
+          <div>
+            <span className="eyebrow">BEFORE YOU TAP PAY</span>
+            <h2>What if I buy it?</h2>
+            <p>Preview the cash-flow impact without adding anything to your real ledger.</p>
+          </div>
+          {hypotheticalPurchase && <button className="button button-quiet" type="button" onClick={clearPurchaseSimulation}>Clear simulation</button>}
+        </div>
+        <form className="purchase-simulator-form" onSubmit={(event) => simulatePurchase(event)}>
+          <label className="field">
+            <span>Purchase amount</span>
+            <span className="currency-input"><b>₱</b><input type={visible ? 'text' : 'password'} inputMode="decimal" value={purchaseAmountInput} onChange={(event) => {
+              setPurchaseAmountInput(event.target.value)
+              setHypotheticalPurchase(undefined)
+              setPurchaseError('')
+            }} aria-label="What-if purchase amount in pesos" placeholder="0.00" /></span>
+          </label>
+          <label className="field">
+            <span>Pay from</span>
+            <select value={purchaseWallet} onChange={(event) => {
+              setPurchaseWalletId(event.target.value)
+              setHypotheticalPurchase(undefined)
+              setPurchaseError('')
+            }}>
+              {availablePurchaseWallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}{wallet.protected ? ' · Protected' : ''}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span>Purchase date</span>
+            <input type="date" min={today} max={endOn} value={purchaseDate} onChange={(event) => {
+              setPurchaseDate(event.target.value)
+              setHypotheticalPurchase(undefined)
+              setPurchaseError('')
+            }} />
+          </label>
+          <button className="button button-primary" type="submit" disabled={availablePurchaseWallets.length === 0}>Simulate purchase</button>
+        </form>
+        {purchaseError && <p className="form-error" role="alert">{purchaseError}</p>}
+        {hypotheticalPurchase && <p className="purchase-simulation-status" role="status">Simulation applied to the {wallets.find((wallet) => wallet.id === hypotheticalPurchase.walletId)?.name ?? 'selected'} forecast. Actual balances and transactions are unchanged.</p>}
+      </section>
       {loading ? (
         <section className="panel forecast-empty" aria-live="polite">
           <span className="eyebrow">LOCAL DATA</span>

@@ -16,7 +16,7 @@ import { getExpectedIncomeProgress, isExpectedIncome, type ExpectedIncome } from
 import { isDateOnly, nextRecurringDate } from './recurrence.ts'
 
 export type ForecastScenario = 'conservative' | 'expected' | 'optimistic'
-export type ForecastEventKind = 'expectedIncome' | 'debt' | 'obligation'
+export type ForecastEventKind = 'expectedIncome' | 'debt' | 'obligation' | 'purchase'
 
 export interface ForecastWallet {
   id: string
@@ -88,6 +88,11 @@ export interface ForecastRequest {
   today: string
   endOn: string
   safetyBufferCentavos: number
+  hypotheticalPurchase?: {
+    walletId: string
+    amountCentavos: number
+    occurredOn: string
+  }
 }
 
 const MAX_FORECAST_DAYS = 3660
@@ -239,6 +244,7 @@ function collectObligationEvents(
 }
 
 function scenarioIncludes(event: ForecastEvent, scenario: ForecastScenario): boolean {
+  if (event.kind === 'purchase') return true
   if (event.kind === 'expectedIncome') {
     if (scenario === 'conservative') return event.confidence === 'high'
     if (scenario === 'expected') return event.confidence !== 'low'
@@ -463,6 +469,29 @@ export function calculateForecast(request: ForecastRequest): readonly ForecastSc
   }
   for (const obligation of request.obligations) {
     collectObligationEvents(obligation, request, walletIds, allEvents)
+  }
+  if (request.hypotheticalPurchase) {
+    const purchase = request.hypotheticalPurchase
+    if (
+      !walletIds.has(purchase.walletId) ||
+      !Number.isSafeInteger(purchase.amountCentavos) ||
+      purchase.amountCentavos <= 0 ||
+      !isDateOnly(purchase.occurredOn) ||
+      purchase.occurredOn < request.today ||
+      purchase.occurredOn > request.endOn
+    ) {
+      throw new TypeError('The hypothetical purchase is invalid or outside the forecast period.')
+    }
+    addEvent(allEvents, walletIds, {
+      id: 'hypothetical-purchase',
+      label: 'What-if purchase',
+      walletId: purchase.walletId,
+      dueOn: purchase.occurredOn,
+      projectedOn: purchase.occurredOn,
+      kind: 'purchase',
+      direction: 'outflow',
+      amountCentavos: purchase.amountCentavos,
+    })
   }
   return (['conservative', 'expected', 'optimistic'] as const).map((scenario) =>
     forecastScenario(

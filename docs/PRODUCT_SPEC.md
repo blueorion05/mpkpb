@@ -4,7 +4,7 @@ MPKPB? (May Pera Ka Pa Ba?) is a responsive, local-first personal finance app pr
 
 ## Principles
 
-- No registration, backend, cloud database, paid API, analytics, or external AI service.
+- No registration, backend, cloud database, paid API, third-party analytics/telemetry, or external AI service.
 - Store monetary values as integer centavos and format Philippine pesos using `en-PH`.
 - Make examples customizable and distinguish actual money from projections.
 - Prioritize mobile usability, keyboard access, accessible contrast, and reduced motion.
@@ -15,9 +15,9 @@ MPKPB? (May Pera Ka Pa Ba?) is a responsive, local-first personal finance app pr
 
 Dashboard, wallets, transactions, budget plans, forecast, debts, insights, save history, and settings. Mobile navigation prioritizes Home, Wallets, Activity, Forecast, Plans, and More.
 
-## Current foundation
+## Implemented through v0.6.0
 
-The v0.5.0 foundation provides a responsive application shell, skippable first-run wallet onboarding, customizable wallets, protected funds, theme choice, balance visibility, and local IndexedDB persistence. The ledger supports dated income, expenses, transfers and fees, manual balance adjustments, custom categories, transaction edits/deletion, and searchable/filterable/sortable history. Balances derive from opening balances plus posted ledger deltas. Budget plans have customizable inclusive date ranges and expense-category limits. Expected income records due dates, confidence, and recurrence; receipts create linked posted income transactions. Debts support payable and receivable balances, installments, partial settlement, and optional original-transaction links. Upcoming bills support due dates, recurrence, installments, and partial payments. Forecasts model these schedules chronologically with confidence scenarios, wallet-specific balances, shortage/recovery dates, protected funds, and a safety buffer. Later milestones remain future work; see `docs/ROADMAP.md`.
+The v0.6.0 implementation provides a responsive application shell, skippable first-run wallet onboarding, customizable wallets, protected funds, theme choice, balance visibility, and local IndexedDB persistence. The ledger supports dated income, expenses, transfers and fees, manual balance adjustments, custom categories, transaction edits/deletion, and searchable/filterable/sortable history. Balances derive from opening balances plus posted ledger deltas. Budget plans have customizable inclusive date ranges and expense-category limits. Expected income records due dates, confidence, and recurrence; receipts create linked posted income transactions. Debts support payable and receivable balances, installments, partial settlement, and optional original-transaction links. Upcoming bills support due dates, recurrence, installments, and partial payments. Forecasts model these schedules chronologically with confidence scenarios, wallet-specific balances, shortage/recovery dates, protected funds, and a safety buffer. The forecast includes a hypothetical-purchase simulator that affects projections only, never the ledger. The More area provides an in-app financial calendar, local reminders for near-term/overdue schedules and budget thresholds, and date-filtered income, expense, category, budget, wallet, and debt insights. Later milestones remain future work; see `docs/ROADMAP.md`.
 
 ## Financial behavior
 
@@ -38,3 +38,6 @@ The v0.5.0 foundation provides a responsive application shell, skippable first-r
 - Conservative forecasts include only high-confidence expected income and no debt collections; expected forecasts include high/medium income and collections; optimistic forecasts include all expected income and collections. All scheduled outflows remain in every scenario.
 - Overdue and partially settled occurrences project only their unpaid amounts from today. Same-day outflows are checked before inflows, and wallet-specific shortages must remain visible even if combined balances are positive.
 - Protected and archived funds remain in total projections but do not count as spendable money. Safe daily/weekly spending must respect a locally saved safety buffer and projected intermediate headroom.
+- What-if purchases are temporary forecast outflows; they are never saved as transactions or included in actual balances.
+- Analytics use posted ledger entries only, exclude debt settlements already represented by a linked original transaction, and treat transfer principal as neutral while including transfer fees as expenses.
+- Calendar reminders are generated and displayed locally from upcoming/overdue schedules and active budget utilization; they do not use operating-system notifications or transmit financial data.

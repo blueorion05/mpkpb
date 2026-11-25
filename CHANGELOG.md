@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0 — Financial tools and analytics
+
+- Added a what-if purchase simulator that feeds hypothetical expenses into every forecast scenario without changing ledger data.
+- Added a local financial calendar combining actual transactions with forecast-engine schedule events, plus in-app reminders for near-term obligations and budget thresholds.
+- Added centavo-safe monthly cash-flow trends, income/expense category breakdowns, date-filtered analytics, budget-plan filtering, wallet distribution, and debt progress.
+- Kept forecasts and reminders on-device and reused existing ledger, schedule, budget, and debt calculations.
+
 ## 0.5.0 — Financial forecasting
 
 - Added chronological conservative, expected, and optimistic cash-flow projections through a customizable date, defaulting to month-end.

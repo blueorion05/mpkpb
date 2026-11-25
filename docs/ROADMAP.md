@@ -68,9 +68,9 @@
 
 ## Phase 6 — v0.6.0 Tools and analytics
 
-- [ ] What-if purchase simulator, calendar, upcoming timeline, and local reminders.
-- [ ] Trends, category breakdowns, income/expense, budget, wallet, and debt analytics.
-- [ ] Relevant date and budget filters.
+- [x] What-if purchase simulator, calendar, upcoming timeline, and local reminders.
+- [x] Trends, category breakdowns, income/expense, budget, wallet, and debt analytics.
+- [x] Relevant date and budget filters.
 
 ## Phase 7 — v0.7.0 Geng Geng personality and UI/UX
 

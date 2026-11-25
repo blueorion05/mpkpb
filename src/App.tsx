@@ -39,6 +39,7 @@ import {
 import ActivityPage from './components/ActivityPage'
 import ForecastPage from './components/ForecastPage'
 import PlansPage from './components/PlansPage'
+import ToolsPage from './components/ToolsPage'
 import TransactionDialog from './components/TransactionDialog'
 import {
   type DebtRecord,
@@ -866,7 +867,22 @@ function App() {
               onPayObligation={handlePayObligation}
             />
           )}
-          {page === 'more' && <SettingsPage theme={theme} onThemeChange={(next) => void changeTheme(next)} />}
+          {page === 'more' && (
+            <ToolsPage
+              wallets={wallets}
+              transactions={transactions}
+              categories={categories}
+              budgetPlans={budgetPlans}
+              expectedIncomes={expectedIncomes}
+              debts={debts}
+              obligations={obligations}
+              loading={loading}
+              dataUnavailable={walletLoadError || planningLoadError}
+              visible={balanceVisible}
+              theme={theme}
+              onThemeChange={(next) => void changeTheme(next)}
+            />
+          )}
         </main>
       </div>
 
@@ -1204,32 +1220,6 @@ function WalletsPage({
             )}
           </>
         )}
-      </section>
-    </>
-  )
-}
-
-function SettingsPage({ theme, onThemeChange }: { theme: Theme; onThemeChange: (theme: Theme) => void }) {
-  const options: { id: Theme; label: string; description: string; icon: string }[] = [
-    { id: 'system', label: 'System', description: 'Follow your device settings', icon: '▣' },
-    { id: 'light', label: 'Light', description: 'Bright and clear', icon: '☼' },
-    { id: 'dark', label: 'Dark', description: 'Easy on the eyes', icon: '☾' },
-  ]
-  return (
-    <>
-      <div className="page-heading"><div><span className="eyebrow">MAKE IT YOURS</span><h1>More</h1><p>Your settings, privacy, and app details.</p></div></div>
-      <section className="panel settings-panel">
-        <div className="settings-title"><span className="card-icon">☼</span><div><h2>Appearance</h2><p>Choose how MPKPB? looks on this device.</p></div></div>
-        <div className="theme-options" role="group" aria-label="Color theme">
-          {options.map((option) => (
-            <button className={`theme-option${theme === option.id ? ' selected' : ''}`} key={option.id} type="button" aria-pressed={theme === option.id} onClick={() => onThemeChange(option.id)}>
-              <span aria-hidden="true">{option.icon}</span><span><strong>{option.label}</strong><small>{option.description}</small></span>{theme === option.id && <i aria-hidden="true" />}
-            </button>
-          ))}
-        </div>
-      </section>
-      <section className="panel about-panel">
-        <span className="card-icon mint-icon">⌑</span><div><h2>Privacy, no drama</h2><p>Your financial data is stored in this browser’s IndexedDB. MPKPB? has no financial backend. Clearing site storage removes local data, so backup tools are important future work.</p></div>
       </section>
     </>
   )

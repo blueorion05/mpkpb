@@ -2,17 +2,19 @@
 
 ## Current layout
 
-- `src/App.tsx`: responsive app shell, navigation, first-run onboarding, wallet management, and foundation views.
+- `src/App.tsx`: responsive app shell, navigation, first-run onboarding, wallet management, and view composition.
 - `src/components/ActivityPage.tsx` and `src/components/TransactionDialog.tsx`: searchable ledger history and transaction/category entry.
 - `src/components/ForecastPage.tsx`: date- and wallet-specific forecast controls, scenarios, safe-to-spend summaries, and cash-flow visualizations.
+- `src/components/ToolsPage.tsx`: local financial calendar/reminders, date- and budget-filtered insights, and theme settings.
 - `src/components/PlansPage.tsx` and `src/components/DebtsPage.tsx`: budget plans, expected income, debts, bills, and payment workflows.
 - `src/db/database.ts`: browser-native IndexedDB database, schema migration, and typed wallet/ledger/planning/debt operations.
 - `src/domain/ledger.ts`: transaction invariants, balance deltas, ledger summaries, and history filters.
 - `src/domain/planning.ts`: budget validation/progress, expected-income schedules, and receipt reconciliation.
 - `src/domain/debts.ts` and `src/domain/recurrence.ts`: debt/obligation validation, installment progress, payment reconciliation, and shared recurrence dates.
 - `src/domain/forecast.ts`: chronological scenario projections, overdue schedule expansion, shortage/recovery analysis, and safe daily/weekly spending.
+- `src/domain/analytics.ts`: validated, centavo-safe income/expense totals, category breakdowns, and monthly trends derived from actual ledger entries.
 - `src/domain/money.ts`: centavo parsing, PHP formatting, and safe aggregation.
-- `tests/ledger.test.ts`, `tests/planning.test.ts`, `tests/debts.test.ts`, `tests/forecast.test.ts`, and `tests/money.test.ts`: financial invariant tests using Node's built-in test runner.
+- `tests/ledger.test.ts`, `tests/planning.test.ts`, `tests/debts.test.ts`, `tests/forecast.test.ts`, `tests/analytics.test.ts`, and `tests/money.test.ts`: financial invariant tests using Node's built-in test runner.
 - `src/index.css` and `src/App.css`: theme tokens, global styles, and responsive components.
 
 ## Local database
@@ -53,6 +55,10 @@ Bill obligations are stored as scheduled events, never as current balance. Payme
 `calculateForecast` derives starting balances from the wallet ledger and expands active income, debt, and bill schedules into integer-centavo events. A partial occurrence contributes only its unpaid remainder. Overdue occurrences project from today, and same-day outflows are evaluated before inflows so an end-of-day positive balance cannot hide an intermediate shortage. Recurring arrears remain individually represented; protected and archived wallets appear in total and wallet projections but are excluded from spendable funds.
 
 The conservative scenario includes only high-confidence expected income and excludes debt collections; expected includes high/medium income and scheduled debt collections; optimistic includes all expected income and collections. Planned outflows remain in every scenario. Safe daily spending is constrained by the minimum projected unprotected, active balance after the safety buffer across the selected period. Weekly spending is capped by both seven days at that daily pace and the lowest available headroom. The safety buffer is stored as a local preference; forecasts do not modify ledger balances or transmit data.
+
+The what-if purchase is a validated forecast outflow and is not written to IndexedDB. Calendar schedule events are obtained from the same forecast engine, preserving recurrence, overdue, partial-settlement, and confidence-independent due-date logic. Calendar reminders are computed in memory from the next seven days of forecast events and active budget category utilization; no system notification permission is requested.
+
+Analytics are calculated by `calculateFinancialAnalytics` from validated posted transactions and categories. Linked debt settlements marked as already represented by an original principal transaction are excluded; transfer principal and balance adjustments are excluded, and transfer fees are categorized separately as expenses. Monthly rows are initialized for the complete selected period, including months with no transactions. Budget and debt performance reuse the existing planning and debt progress functions, while wallet distribution is derived through the ledger balance calculator.
 
 ## Calculation rules
 
