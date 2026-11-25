@@ -72,7 +72,7 @@
 - [x] Trends, category breakdowns, income/expense, budget, wallet, and debt analytics.
 - [x] Relevant date and budget filters.
 
-## Phase 7 — v0.7.0 Geng Geng personality and UI/UX
+## Phase 7 — v0.7.0 Geng personality and UI/UX
 
 - [ ] Context-aware Taglish humor engine with at least 100 unique punchlines.
 - [ ] Signature expression, humor/profanity toggles, separate financial warnings.

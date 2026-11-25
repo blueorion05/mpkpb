@@ -402,7 +402,7 @@ function App() {
       if (previousWallet) {
         await updateWallet(wallet)
         setWallets((current) => current.map((item) => item.id === wallet.id ? wallet : item))
-        setSuccessMessage(`${wallet.name} updated. Looks good, Geng Geng.`)
+        setSuccessMessage(`${wallet.name} updated. Looks good, Geng.`)
       } else {
         await createWallet(wallet, nameInput || undefined)
         setWallets((current) => [...current, wallet])
@@ -1070,7 +1070,7 @@ function Dashboard({
       <div className="page-heading">
         <div>
           <span className="eyebrow">YOUR MONEY, YOUR CALL</span>
-          <h1>Hey, {displayName || 'Geng Geng'}<span className="green-dot">.</span></h1>
+          <h1>Hey, {displayName || 'Geng'}<span className="green-dot">.</span></h1>
           <p>Here’s the real talk on your money today.</p>
         </div>
         <button className="button button-primary add-wallet-button" type="button" onClick={onAddWallet}>
@@ -1119,7 +1119,7 @@ function Dashboard({
         </section>
         <aside className="panel insight-panel">
           <span className="insight-icon" aria-hidden="true">✦</span>
-          <span className="eyebrow">GENG GENG SAYS</span>
+          <span className="eyebrow">GENG SAYS</span>
           <h2>{wallets.length ? 'Good start. Now let’s track the plot.' : 'No judgment. We all start somewhere.'}</h2>
           <p>{wallets.length
             ? 'Your ledger is taking shape, one peso at a time.'
