@@ -1,7 +1,8 @@
+import OfflineStatus from './components/OfflineStatus'
 import DataSafety from './components/DataSafety'
 import { PrivacyGate, PrivacySettings } from './components/PrivacyLock'
 import { GENG_EXPRESSION, getGengMessage, type GengContext } from './domain/humor'
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   addCategory,
   archiveWallet,
@@ -40,9 +41,6 @@ import {
   type UpdatedScheduledEvent,
 } from './db/database'
 import ActivityPage from './components/ActivityPage'
-import ForecastPage from './components/ForecastPage'
-import PlansPage from './components/PlansPage'
-import ToolsPage from './components/ToolsPage'
 import TransactionDialog from './components/TransactionDialog'
 import {
   type DebtRecord,
@@ -61,6 +59,10 @@ import {
 } from './domain/planning'
 import { formatPHP, parsePesoToCentavos, sumCentavos } from './domain/money'
 import './App.css'
+
+const ForecastPage = lazy(() => import('./components/ForecastPage'))
+const PlansPage = lazy(() => import('./components/PlansPage'))
+const ToolsPage = lazy(() => import('./components/ToolsPage'))
 
 type Page = 'home' | 'wallets' | 'activity' | 'forecast' | 'plans' | 'more'
 type Theme = 'system' | 'light' | 'dark'
@@ -786,6 +788,7 @@ function App() {
         </header>
 
         <main className="page-content" id="main-content" tabIndex={-1}>
+          <OfflineStatus showReady={page === 'more'} />
           {!loading && !walletLoadError && !planningLoadError && humorEnabled && page !== 'more' && page !== 'home' && (
             <p className="geng-note"><span aria-hidden="true">{GENG_EXPRESSION}</span> {getGengMessage(pageContext[page], { humorEnabled, profanityEnabled })}</p>
           )}
@@ -859,6 +862,7 @@ function App() {
               onDelete={setTransactionToDelete}
             />
           )}
+          <Suspense fallback={<p role="status">Loading page...</p>}>
           {page === 'forecast' && (
             <ForecastPage
               wallets={wallets}
@@ -924,6 +928,7 @@ function App() {
               onThemeChange={(next) => void changeTheme(next)}
             />
           )}
+          </Suspense>
           {page === 'more' && !loading && <><DataSafety /><PrivacySettings /></>}
         </main>
       </div>

@@ -32,3 +32,5 @@ Next: proceed to v0.7.0 Geng Geng personality and UI/UX. Preserve all wallet, le
 - v0.7 development integrates 105 contextual lines with local humor and profanity settings. Browser QA remains pending.
 - v0.8 recovery verified in a disposable 375px Edge profile. Onboarding, autosave, manual snapshot, JSON replacement, safety-snapshot restoration, and incorrect/correct PIN entry passed. Schema remains at v5.
 - Validation tests reject duplicate IDs, missing wallet references, and orphaned planned receipts.
+- v0.9 verified install manifest and offline shell build. Edge QA passed offline wallet creation and persistence, lazy-loaded forecast, and deferred service-worker activation with preserved data.
+- Route splitting reduced the initial JavaScript from approximately 426 KB (115 KB gzip) to 340 KB (98 KB gzip).
