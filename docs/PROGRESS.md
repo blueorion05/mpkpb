@@ -25,3 +25,8 @@ v0.6.0 tools and analytics are complete. The v0.1.0 foundation through v0.5.0 fo
 ## Next
 
 Next: proceed to v0.7.0 Geng Geng personality and UI/UX. Preserve all wallet, ledger, planning, debt, and bill records across future schema changes.
+
+## Continuation
+
+- v0.6.0 baseline verified locally with 32 tests, lint, type checking, and a Vite build.
+- v0.7 development integrates 105 contextual lines with local humor and profanity settings. Browser QA remains pending.

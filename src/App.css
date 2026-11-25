@@ -1861,3 +1861,18 @@
     grid-template-columns: 1fr;
   }
 }
+.geng-note,
+.geng-settings {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid currentColor;
+  border-radius: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.geng-settings label {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 44px;
+}

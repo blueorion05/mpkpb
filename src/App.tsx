@@ -1,3 +1,4 @@
+import { GENG_EXPRESSION, getGengMessage, type GengContext } from './domain/humor'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   addCategory,
@@ -137,6 +138,8 @@ function App() {
   const [debts, setDebts] = useState<DebtRecord[]>([])
   const [obligations, setObligations] = useState<FinancialObligation[]>([])
   const [forecastSafetyBufferCentavos, setForecastSafetyBufferCentavos] = useState(0)
+  const [humorEnabled, setHumorEnabled] = useState(true)
+  const [profanityEnabled, setProfanityEnabled] = useState(false)
   const [theme, setTheme] = useState<Theme>('system')
   const [displayName, setDisplayName] = useState('')
   const [balanceVisible, setBalanceVisible] = useState(true)
@@ -225,17 +228,21 @@ function App() {
       }
 
       try {
-        const [savedTheme, savedName, onboardingComplete, savedForecastBuffer] = await Promise.all([
+        const [savedTheme, savedName, onboardingComplete, savedForecastBuffer, savedHumor, savedProfanity] = await Promise.all([
           getPreference('theme'),
           getPreference('displayName'),
           getPreference('onboardingComplete'),
           getPreference('forecastSafetyBufferCentavos'),
+          getPreference('humorEnabled'),
+          getPreference('profanityEnabled'),
         ])
         if (!active) return
         if (savedTheme === 'system' || savedTheme === 'light' || savedTheme === 'dark') {
           setTheme(savedTheme)
         }
         setDisplayName(savedName ?? '')
+        setHumorEnabled(savedHumor !== 'false')
+        setProfanityEnabled(savedProfanity === 'true')
         if (savedForecastBuffer !== undefined) {
           const parsedBuffer = Number(savedForecastBuffer)
           if (Number.isSafeInteger(parsedBuffer) && parsedBuffer >= 0) {
@@ -402,11 +409,11 @@ function App() {
       if (previousWallet) {
         await updateWallet(wallet)
         setWallets((current) => current.map((item) => item.id === wallet.id ? wallet : item))
-        setSuccessMessage(`${wallet.name} updated. Looks good, Geng.`)
+        setSuccessMessage(`${wallet.name} updated.`)
       } else {
         await createWallet(wallet, nameInput || undefined)
         setWallets((current) => [...current, wallet])
-        setSuccessMessage(`${wallet.name} saved. Pera, meet dashboard.`)
+        setSuccessMessage(`${wallet.name} saved on this device.`)
       }
       if (nameInput) setDisplayName(nameInput)
       setDialogOpen(false)
@@ -701,6 +708,24 @@ function App() {
       : ''
   )
 
+  async function changeHumor(key: 'humorEnabled' | 'profanityEnabled', enabled: boolean) {
+    try {
+      await savePreference(key, String(enabled))
+      if (key === 'humorEnabled') setHumorEnabled(enabled)
+      else setProfanityEnabled(enabled)
+    } catch (error) {
+      setPageError(error instanceof Error ? error.message : 'The humor preference could not be saved.')
+    }
+  }
+
+  const walletContext: GengContext = !activeWallets.length ? 'new-wallet'
+    : balanceVisible && totals && totals.spendable <= 0 ? 'tight-wallet'
+      : activeWallets.some((wallet) => wallet.protected) ? 'saving' : 'generic'
+  const pageContext: Record<Page, GengContext> = {
+    home: walletContext, wallets: walletContext, activity: 'ledger', forecast: 'forecast',
+    plans: 'planning', more: 'generic',
+  }
+
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Skip to content</a>
@@ -758,7 +783,10 @@ function App() {
           </div>
         </header>
 
-        <main className="page-content" id="main-content">
+        <main className="page-content" id="main-content" tabIndex={-1}>
+          {!loading && !walletLoadError && !planningLoadError && humorEnabled && page !== 'more' && (
+            <p className="geng-note"><span aria-hidden="true">{GENG_EXPRESSION}</span> {getGengMessage(pageContext[page], { humorEnabled, profanityEnabled })}</p>
+          )}
           {pageError && (
             <div className="error-banner" role="alert">
               <span>{pageError}</span>
@@ -866,6 +894,15 @@ function App() {
               onSettleDebt={handleSettleDebt}
               onPayObligation={handlePayObligation}
             />
+          )}
+          {page === 'more' && (
+            <fieldset className="geng-settings">
+              <legend>Geng Geng</legend>
+              <label><input type="checkbox" checked={humorEnabled} disabled={loading}
+                onChange={(event) => void changeHumor('humorEnabled', event.target.checked)} /> Show Taglish humor</label>
+              <label><input type="checkbox" checked={profanityEnabled} disabled={loading || !humorEnabled}
+                onChange={(event) => void changeHumor('profanityEnabled', event.target.checked)} /> Allow mild profanity</label>
+            </fieldset>
           )}
           {page === 'more' && (
             <ToolsPage
@@ -1070,7 +1107,7 @@ function Dashboard({
       <div className="page-heading">
         <div>
           <span className="eyebrow">YOUR MONEY, YOUR CALL</span>
-          <h1>Hey, {displayName || 'Geng'}<span className="green-dot">.</span></h1>
+          <h1>Hey, {displayName || 'there'}<span className="green-dot">.</span></h1>
           <p>Here’s the real talk on your money today.</p>
         </div>
         <button className="button button-primary add-wallet-button" type="button" onClick={onAddWallet}>

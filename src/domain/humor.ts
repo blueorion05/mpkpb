@@ -24,6 +24,11 @@ export interface GengPunchline {
 export const GENG_EXPRESSION = '(ง •̀_•́)ง'
 
 const punchlines: readonly GengPunchline[] = [
+  { context: 'ledger', text: 'May resibo? I-log bago malabhan kasama ng pantalon.', mildProfanity: false },
+  { context: 'budget', text: 'May sariling category ang kape. Aba, may department na siya.', mildProfanity: false },
+  { context: 'planning', text: 'Nauna ang reminder sa singil. May character development.', mildProfanity: false },
+  { context: 'forecast', text: 'Silipin ang susunod na linggo bago mag-book ng lakad na biglaan.', mildProfanity: false },
+  { context: 'saving', text: 'May ambag na naman sa future mo. Walang attendance check, pero counted.', mildProfanity: false },
   { context: 'new-wallet', text: 'Bagong wallet, bagong kabanata. Sana walang plot twist sa delivery fee.', mildProfanity: false },
   { context: 'new-wallet', text: 'Welcome sa pera HQ. Walang dress code, pero may budget meeting.', mildProfanity: false },
   { context: 'new-wallet', text: 'Isang wallet pa lang, pero organized na kaysa sa group chat.', mildProfanity: false },
@@ -43,7 +48,7 @@ const punchlines: readonly GengPunchline[] = [
   { context: 'tight-wallet', text: 'Hindi bawal gumastos, pero pa-check muna ng balance bago mag-checkout.', mildProfanity: false },
   { context: 'tight-wallet', text: 'Medyo dikit ang pera. I-delay muna natin ang “deserve ko ’to” speech.', mildProfanity: false },
   { context: 'tight-wallet', text: 'Kapit sa budget, Geng. Hindi lahat ng free shipping ay free talaga.', mildProfanity: false },
-  { context: 'tight-wallet', text: 'May pera pa, pero ayaw na niyang sumali sa biglaang lakad.', mildProfanity: true },
+  { context: 'tight-wallet', text: 'May pera pa, pero ayaw na niyang sumali sa biglaang lakad.', mildProfanity: false },
   { context: 'tight-wallet', text: 'Konting preno muna, shuta ang bilis ng mga gastos minsan.', mildProfanity: true },
 
   { context: 'healthy-wallet', text: 'May breathing room ang wallet. Huwag lang bigyan ng shopping cart.', mildProfanity: false },
@@ -65,7 +70,7 @@ const punchlines: readonly GengPunchline[] = [
   { context: 'negative-wallet', text: 'May shortage sa projection. Wallet, huwag kang mag-drama—gawa tayo ng game plan.', mildProfanity: false },
   { context: 'negative-wallet', text: 'May pera na naka-schedule, pero hindi pa actual. Ingat sa pagbilang nang maaga.', mildProfanity: false },
   { context: 'negative-wallet', text: 'May risk na kapusin. I-check ang bills at huwag umasa sa “baka may dumating.”', mildProfanity: false },
-  { context: 'negative-wallet', text: 'May red flag sa cash flow. Hindi ito joke, kaya unahin natin ang plano.', mildProfanity: true },
+  { context: 'negative-wallet', text: 'May red flag sa cash flow. Hindi ito joke, kaya unahin natin ang plano.', mildProfanity: false },
   { context: 'negative-wallet', text: 'Ay, may kulang sa projection. Peste ang timing—silipin natin ang due dates.', mildProfanity: true },
 
   { context: 'saving', text: 'Bawat ipon, parang maliit na ambag sa future mong hindi kinakabahan.', mildProfanity: false },
@@ -76,7 +81,7 @@ const punchlines: readonly GengPunchline[] = [
   { context: 'saving', text: 'Nag-iipon ka para sa options. Hindi lang para may pang-checkout.', mildProfanity: false },
   { context: 'saving', text: 'Ipon ngayon, konting peace of mind later. Hindi bad deal.', mildProfanity: false },
   { context: 'saving', text: 'Small deposits, big “buti na lang” energy.', mildProfanity: false },
-  { context: 'saving', text: 'Ipon muna bago budol. Oo, pati “limited time” puwedeng maghintay.', mildProfanity: true },
+  { context: 'saving', text: 'Ipon muna bago budol. Oo, pati “limited time” puwedeng maghintay.', mildProfanity: false },
   { context: 'saving', text: 'Hindi instant ang savings, putek. Pero instant din naman ang gastos kung pabaya.', mildProfanity: true },
 
   { context: 'ledger', text: 'I-log ang gastos habang sariwa pa. Hindi reliable ang “parang mga ₱200 lang.”', mildProfanity: false },
@@ -109,7 +114,7 @@ const punchlines: readonly GengPunchline[] = [
   { context: 'planning', text: 'Ang recurring schedule, paulit-ulit. Parang subscription na nakalimutang i-cancel.', mildProfanity: false },
   { context: 'planning', text: 'Settle in parts kung kailangan. Small steps pa rin ang progress.', mildProfanity: false },
   { context: 'planning', text: 'Nasa calendar na ang due date. Isang less na surprise sa future mo.', mildProfanity: false },
-  { context: 'planning', text: 'Expected pa lang ang pera, bes. Huwag muna siyang ipambili ng imaginary shoes.', mildProfanity: true },
+  { context: 'planning', text: 'Expected pa lang ang pera, bes. Huwag muna siyang ipambili ng imaginary shoes.', mildProfanity: false },
   { context: 'planning', text: 'May due date na, putek. Mas okay nang makita ngayon kaysa magulat sa huli.', mildProfanity: true },
 
   { context: 'forecast', text: 'Forecast ito, hindi fortune teller. Pero mas okay nang may heads-up.', mildProfanity: false },
@@ -132,7 +137,7 @@ const punchlines: readonly GengPunchline[] = [
   { context: 'generic', text: 'Kahit simpleng check-in, panalo na laban sa financial amnesia.', mildProfanity: false },
   { context: 'generic', text: 'Pera mo, rules mo. Basta alam mo kung nasaan sila.', mildProfanity: false },
   { context: 'generic', text: 'Walang judgment dito. Ang gastos lang ang pinapa-review natin, gagi.', mildProfanity: true },
-  { context: 'generic', text: 'Financial check-in lang, hindi intervention. Unless kailangan, charot.', mildProfanity: true },
+  { context: 'generic', text: 'Financial check-in lang, hindi intervention. Unless kailangan, charot.', mildProfanity: false },
 ]
 
 export const GENG_PUNCHLINES = punchlines
