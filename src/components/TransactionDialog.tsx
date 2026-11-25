@@ -1,3 +1,6 @@
+import { Plus, X } from 'lucide-react'
+import { CategoryIconPicker, CategorySymbol } from './IconPicker'
+import type { CategoryIcon } from '../domain/categoryIcons'
 import { entryLabels, ledgerKind, makeSchedule, quickAddKinds, scheduleEntryKind, validateCompletedDate, type EntryKind, type ScheduledRecord } from '../domain/entry'
 import { isRecurrenceFrequency } from '../domain/recurrence'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
@@ -18,7 +21,8 @@ interface TransactionDialogProps {
   onSchedule: (record: ScheduledRecord) => Promise<void>
   onClose: () => void
   onSave: (transaction: LedgerTransaction) => Promise<void>
-  onCreateCategory: (name: string, kind: 'income' | 'expense') => Promise<TransactionCategory>
+  onCategoryIcon: (id: string, icon: CategoryIcon) => Promise<void>
+  onCreateCategory: (name: string, kind: 'income' | 'expense', icon?: CategoryIcon) => Promise<TransactionCategory>
 }
 
 function localDateInput(): string {
@@ -36,6 +40,7 @@ export default function TransactionDialog({
   onClose,
   onSave,
   onCreateCategory,
+  onCategoryIcon,
 }: TransactionDialogProps) {
   const defaultWalletId = editingTransaction?.walletId ?? editingSchedule?.walletId ?? wallets.find((wallet) => !wallet.archived && wallet.id === lastWalletId)?.id ?? wallets.find((wallet) => !wallet.archived)?.id ?? ''
   const [entryKind, setEntryKind] = useState<EntryKind>(editingSchedule ? scheduleEntryKind(editingSchedule) : editingTransaction?.kind ?? 'expense')
@@ -62,6 +67,8 @@ export default function TransactionDialog({
       : 'increase',
   )
   const [creatingCategory, setCreatingCategory] = useState(false)
+  const [newCategoryIcon, setNewCategoryIcon] = useState<CategoryIcon>('tag')
+  const [categoryIconBusy, setCategoryIconBusy] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [categoryError, setCategoryError] = useState('')
   const [formError, setFormError] = useState('')
@@ -79,6 +86,7 @@ export default function TransactionDialog({
   const availableCategories = categoryKind
     ? categories.filter((category) => category.kind === categoryKind)
     : []
+  const selection = availableCategories.find((category) => category.id === categoryId)
   const selectableWallets = wallets.filter((wallet) =>
     !wallet.archived || wallet.id === editingSchedule?.walletId ||
     (editingTransaction !== null &&
@@ -114,12 +122,25 @@ export default function TransactionDialog({
     if (!categoryKind) return
     setCategoryError('')
     try {
-      const category = await onCreateCategory(newCategoryName, categoryKind)
+      const category = await onCreateCategory(newCategoryName, categoryKind, newCategoryIcon)
       setCategoryId(category.id)
       setNewCategoryName('')
+      setNewCategoryIcon('tag')
       setCreatingCategory(false)
     } catch (error) {
       setCategoryError(error instanceof Error ? error.message : 'The category could not be saved.')
+    }
+  }
+
+  async function changeCategoryIcon(icon: CategoryIcon) {
+    setCategoryError('')
+    setCategoryIconBusy(true)
+    try {
+      await onCategoryIcon(categoryId, icon)
+    } catch (error) {
+      setCategoryError(error instanceof Error ? error.message : 'Hindi na-save ang icon.')
+    } finally {
+      setCategoryIconBusy(false)
     }
   }
 
@@ -239,7 +260,7 @@ export default function TransactionDialog({
           <div>
             <h2 id="transaction-dialog-title">{editingTransaction || editingSchedule ? 'Edit record' : 'Add record'}</h2>
           </div>
-          <button className="icon-button" type="button" aria-label="Isara" onClick={onClose} disabled={saving}>×</button>
+          <button className="icon-button" type="button" aria-label="Isara" onClick={onClose} disabled={saving} title="Isara"><X className="ui-icon" aria-hidden="true" /></button>
         </div>
         <form className="wallet-form" onSubmit={(event) => void handleSubmit(event)}>
           {!editingTransaction && !editingSchedule ? (
@@ -383,14 +404,17 @@ export default function TransactionDialog({
             <div className="category-field">
               <label className="field">
                 <span>Category <small>optional</small></span>
-                <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+                <span className="icon-picker"><CategorySymbol icon={selection?.icon} /><select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
                   <option value="">Walang category</option>
                   {availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-                </select>
+                </select></span>
               </label>
               <button className="text-button" type="button" onClick={() => setCreatingCategory((current) => !current)}>
-                {creatingCategory ? 'Cancel' : '+ Bagong category'}
+                {creatingCategory ? 'Cancel' : <><Plus className="ui-icon" aria-hidden="true" /> Bagong category</>}
               </button>
+              {selection && !creatingCategory && <fieldset className="category-icon-edit" disabled={categoryIconBusy}>
+                <CategoryIconPicker icon={selection.icon ?? 'tag'} onChange={(icon) => void changeCategoryIcon(icon)} />
+              </fieldset>}
               {creatingCategory && (
                 <div className="inline-category-form">
                   <label className="field">
@@ -403,6 +427,7 @@ export default function TransactionDialog({
                       placeholder={categoryKind === 'expense' ? 'e.g. Merienda' : 'e.g. Side hustle'}
                     />
                   </label>
+                  <CategoryIconPicker icon={newCategoryIcon} onChange={setNewCategoryIcon} />
                   <button className="button button-outline" type="button" onClick={() => void handleCategoryCreate()}>
                     I-save ang category
                   </button>

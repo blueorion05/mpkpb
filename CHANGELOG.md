@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0 — Geng branding and Lucide icons
+
+- Used the supplied geng artwork for the dashboard, onboarding, empty states, navigation branding, favicon, and regular and maskable PWA icons.
+- Replaced looping GIF playback with a randomized 8–15 second idle, one source-speed sequence, and a short blend back to the original pose. Playback pauses when hidden or off-screen and honors reduced motion.
+- Standardized functional icons on local Lucide React imports and added wallet and category pickers with backward-compatible saved IDs.
+
 ## 1.1.0 — Quick add, upcoming payments, and Taglish
 
 - Added dashboard quick add for income, gastos, transfers, bills, and both directions of debt. Future entries reuse the existing income, bill, and debt schedules.

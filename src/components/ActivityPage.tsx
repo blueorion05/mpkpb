@@ -1,3 +1,6 @@
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Plus, SlidersHorizontal } from 'lucide-react'
+import Mascot from './Mascot'
+import { CategorySymbol } from './IconPicker'
 import { useMemo, useState } from 'react'
 import {
   filterAndSortTransactions,
@@ -98,7 +101,7 @@ export default function ActivityPage({
       <div className="page-heading">
         <div>
 
-          <h1>Galaw ng pera</h1>
+          <h1>Activity</h1>
           <p>Dito mo makikita ang aktwal na pasok at labas ng pera.</p>
         </div>
         {!loading && !dataUnavailable && transactions.length > 0 && !summary && (
@@ -107,7 +110,7 @@ export default function ActivityPage({
           </div>
         )}
         <button className="button button-primary add-wallet-button" type="button" onClick={onAdd} disabled={!canAdd}>
-          <span aria-hidden="true">＋</span> Add record
+          <Plus className="ui-icon" aria-hidden="true" /> Add record
         </button>
       </div>
 
@@ -153,7 +156,7 @@ export default function ActivityPage({
                 setCategoryId('')
               }
             }}>
-              <option value="all">Lahat ng galaw</option>
+              <option value="all">Lahat ng activity</option>
               <option value="income">Income</option>
               <option value="expense">Gastos</option>
               <option value="transfer">Transfers</option>
@@ -202,10 +205,10 @@ export default function ActivityPage({
           <p className="error-state">Hindi mabasa ang mga record. Pindutin ang Subukan ulit.</p>
         ) : transactions.length === 0 ? (
           <div className="empty-page activity-empty">
-            <span className="empty-icon" aria-hidden="true">↗</span>
-            <h2>Wala pang galaw ng pera</h2>
+            <Mascot className="mascot-empty" />
+            <h2>Wala pang activity ng pera</h2>
             <p>I-record ang income, gastos, at transfer mo rito.</p>
-            <button className="button button-primary" type="button" onClick={onAdd} disabled={!canAdd}>＋ Add unang record</button>
+            <button className="button button-primary" type="button" onClick={onAdd} disabled={!canAdd}><Plus className="ui-icon" aria-hidden="true" /> Add unang record</button>
           </div>
         ) : filteredTransactions.length === 0 ? (
           <div className="empty-page activity-empty">
@@ -221,7 +224,7 @@ export default function ActivityPage({
               return (
                 <li className={`transaction-row transaction-${transaction.kind}`} key={transaction.id}>
                   <span className="transaction-icon" aria-hidden="true">
-                    {transaction.kind === 'income' ? '↙' : transaction.kind === 'expense' ? '↗' : transaction.kind === 'transfer' ? '⇄' : '±'}
+                    {transaction.kind === 'income' ? <ArrowDownLeft className="ui-icon" aria-hidden="true" /> : transaction.kind === 'expense' ? <ArrowUpRight className="ui-icon" aria-hidden="true" /> : transaction.kind === 'transfer' ? <ArrowLeftRight className="ui-icon" aria-hidden="true" /> : <SlidersHorizontal className="ui-icon" aria-hidden="true" />}
                   </span>
                   <div className="transaction-info">
                     <strong>{transaction.description}</strong>
@@ -233,7 +236,7 @@ export default function ActivityPage({
                         ? `${sourceWallet?.name ?? 'Unknown wallet'} → ${destinationWallet?.name ?? 'Unknown wallet'} · Fee ${formatPHP(transaction.feeCentavos ?? 0)}`
                         : [
                             sourceWallet?.name,
-                            category?.name,
+                            category ? <span className="category-label"><CategorySymbol icon={category.icon} /> {category.name}</span> : null,
                             transaction.kind === 'income' ? 'Nakuha na' : transaction.kind === 'expense' ? 'Bayad na' : null,
                             transaction.expectedIncomeId ? 'Receipt ng naka-schedule na income' : null,
                             transaction.debtSettlementId
@@ -242,7 +245,7 @@ export default function ActivityPage({
                                 : 'Bayad sa utang'
                               : null,
                             transaction.obligationId ? 'Bayad sa bill' : null,
-                          ].filter(Boolean).join(' · ')}
+                          ].filter(Boolean).map((part, index) => <span key={index}>{index > 0 && ' · '}{part}</span>)}
                     </small>
                   </div>
                   <strong className="transaction-amount">{transactionAmount(transaction)}</strong>

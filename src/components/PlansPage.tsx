@@ -1,3 +1,7 @@
+import { Plus, X } from 'lucide-react'
+import Mascot from './Mascot'
+import { CategoryIconPicker, CategorySymbol } from './IconPicker'
+import type { CategoryIcon } from '../domain/categoryIcons'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   calculateBudgetProgress,
@@ -31,7 +35,7 @@ interface PlansPageProps {
   onDuplicateBudget: (plan: BudgetPlan) => Promise<void>
   onSaveExpectedIncome: (expected: ExpectedIncome) => Promise<void>
   onArchiveExpectedIncome: (expected: ExpectedIncome) => Promise<void>
-  onCreateCategory: (name: string, kind: 'income' | 'expense') => Promise<TransactionCategory>
+  onCreateCategory: (name: string, kind: 'income' | 'expense', icon?: CategoryIcon) => Promise<TransactionCategory>
   onReceiveIncome: (expected: ExpectedIncome, amountCentavos: number, dueOn: string) => Promise<void>
   onSaveDebt: (debt: DebtRecord) => Promise<void>
   onArchiveDebt: (debt: DebtRecord) => Promise<void>
@@ -247,7 +251,7 @@ function PlansPage({
             type="button"
             onClick={() => activeTab === 'budgets' ? setEditingBudget(null) : setEditingIncome(null)}
           >
-            ＋ {activeTab === 'budgets' ? 'New budget' : 'Schedule income'}
+            <Plus className="ui-icon" aria-hidden="true" /> {activeTab === 'budgets' ? 'New budget' : 'Schedule income'}
           </button>
         )}
       </div>
@@ -300,10 +304,10 @@ function PlansPage({
         <section id="budgets-panel" role="tabpanel" aria-labelledby="budgets-tab" className="plans-list">
           {budgetCards.length === 0 ? (
             <div className="empty-page plans-empty">
-              <span className="empty-icon" aria-hidden="true">▤</span>
+              <Mascot className="mascot-empty" />
               <h2>{includeArchived ? 'No budget plans yet' : 'Wala pang budget plan'}</h2>
               <p>Create a plan for a custom date range, then set limits for the expense categories you want to track.</p>
-              <button className="button button-primary" type="button" onClick={() => setEditingBudget(null)}>＋ Create a budget</button>
+              <button className="button button-primary" type="button" onClick={() => setEditingBudget(null)}><Plus className="ui-icon" aria-hidden="true" /> Create a budget</button>
             </div>
           ) : budgetCards.map(({ plan, progress, error }) => (
             <article className={`panel plan-card${plan.archived ? ' plan-archived' : ''}`} key={plan.id}>
@@ -365,10 +369,10 @@ function PlansPage({
           </div>
           {visibleIncomes.length === 0 ? (
             <div className="empty-page plans-empty">
-              <span className="empty-icon" aria-hidden="true">↙</span>
+              <Mascot className="mascot-empty" />
               <h2>Wala pang paparating na pera</h2>
               <p>I-schedule ang paparating na pera at i-record kapag nakuha mo na, buo man o kulang.</p>
-              <button className="button button-primary" type="button" onClick={() => setEditingIncome(null)}>＋ Schedule expected income</button>
+              <button className="button button-primary" type="button" onClick={() => setEditingIncome(null)}><Plus className="ui-icon" aria-hidden="true" /> Schedule expected income</button>
             </div>
           ) : visibleIncomes.map((expected) => {
             let progress
@@ -479,7 +483,7 @@ function PlansPage({
                 <h2 id="archive-plan-title">Archive this {archiveTarget.type === 'budget' ? 'budget' : 'income schedule'}?</h2>
                 <p>It will leave your active list, but its saved history stays on this device.</p>
               </div>
-              <button className="icon-button" type="button" aria-label="Isara" onClick={() => setArchiveTarget(null)}>×</button>
+              <button className="icon-button" type="button" aria-label="Isara" onClick={() => setArchiveTarget(null)} title="Isara"><X className="ui-icon" aria-hidden="true" /></button>
             </div>
             <div className="dialog-actions">
               <button className="button button-secondary" type="button" onClick={() => setArchiveTarget(null)}>Keep active</button>
@@ -497,13 +501,14 @@ interface BudgetPlanDialogProps {
   categories: readonly TransactionCategory[]
   onClose: () => void
   onSave: (plan: BudgetPlan) => Promise<void>
-  onCreateCategory: (name: string, kind: 'income' | 'expense') => Promise<TransactionCategory>
+  onCreateCategory: (name: string, kind: 'income' | 'expense', icon?: CategoryIcon) => Promise<TransactionCategory>
 }
 
 function BudgetPlanDialog({ plan, categories, onClose, onSave, onCreateCategory }: BudgetPlanDialogProps) {
   const dates = monthRange()
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [newCategoryIcon, setNewCategoryIcon] = useState<CategoryIcon>('tag')
   const [newCategoryName, setNewCategoryName] = useState('')
   const [creatingCategory, setCreatingCategory] = useState(false)
   const dialogRef = useDialogKeyboard(onClose, saving)
@@ -511,8 +516,9 @@ function BudgetPlanDialog({ plan, categories, onClose, onSave, onCreateCategory 
   async function createCategory() {
     setError('')
     try {
-      await onCreateCategory(newCategoryName, 'expense')
+      await onCreateCategory(newCategoryName, 'expense', newCategoryIcon)
       setNewCategoryName('')
+      setNewCategoryIcon('tag')
       setCreatingCategory(false)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'The category could not be created.')
@@ -569,7 +575,7 @@ function BudgetPlanDialog({ plan, categories, onClose, onSave, onCreateCategory 
             <h2 id="budget-dialog-title">{plan ? 'Edit budget plan' : 'New budget plan'}</h2>
             <p>Limits track categorized expenses in this date range. They never change your actual balance.</p>
           </div>
-          <button className="icon-button" type="button" aria-label="Isara" onClick={onClose} disabled={saving}>×</button>
+          <button className="icon-button" type="button" aria-label="Isara" onClick={onClose} disabled={saving} title="Isara"><X className="ui-icon" aria-hidden="true" /></button>
         </div>
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <label className="field"><span>Plan name</span><input autoFocus name="name" required maxLength={50} defaultValue={plan?.name ?? ''} placeholder="e.g. June essentials" /></label>
@@ -585,7 +591,7 @@ function BudgetPlanDialog({ plan, categories, onClose, onSave, onCreateCategory 
               const existingLimit = plan?.categoryLimits.find((limit) => limit.categoryId === category.id)
               return (
                 <div className="budget-limit-row" key={category.id}>
-                  <label><input type="checkbox" name={`include-${category.id}`} defaultChecked={Boolean(existingLimit)} /><span>{category.name}</span></label>
+                  <label><input type="checkbox" name={`include-${category.id}`} defaultChecked={Boolean(existingLimit)} /><span className="category-label"><CategorySymbol icon={category.icon} /> {category.name}</span></label>
                   <span className="currency-input"><b>₱</b><input name={`limit-${category.id}`} inputMode="decimal" defaultValue={existingLimit ? amountInputValue(existingLimit.limitCentavos) : ''} placeholder="0.00" aria-label={`${category.name} limit`} /></span>
                 </div>
               )
@@ -594,10 +600,11 @@ function BudgetPlanDialog({ plan, categories, onClose, onSave, onCreateCategory 
           {creatingCategory ? (
             <div className="inline-category-create">
               <label className="field"><span>New expense category</span><input autoFocus value={newCategoryName} maxLength={40} onChange={(event) => setNewCategoryName(event.target.value)} /></label>
+              <CategoryIconPicker icon={newCategoryIcon} onChange={setNewCategoryIcon} />
               <button className="button button-secondary" type="button" onClick={() => void createCategory()}>Add</button>
             </div>
           ) : (
-            <button className="text-button" type="button" onClick={() => setCreatingCategory(true)}>＋ Create expense category</button>
+            <button className="text-button" type="button" onClick={() => setCreatingCategory(true)}><Plus className="ui-icon" aria-hidden="true" /> Create expense category</button>
           )}
           {error && <p className="form-error" role="alert">{error}</p>}
           <div className="dialog-actions">
@@ -684,7 +691,7 @@ function ExpectedIncomeDialog({ expected, wallets, categories, onClose, onSave }
             <h2 id="income-dialog-title">{expected ? 'Edit paparating na pera' : 'I-schedule ang paparating na pera'}</h2>
             <p>Planned income stays separate from your current balance until a receipt is posted.</p>
           </div>
-          <button className="icon-button" type="button" aria-label="Isara" onClick={onClose} disabled={saving}>×</button>
+          <button className="icon-button" type="button" aria-label="Isara" onClick={onClose} disabled={saving} title="Isara"><X className="ui-icon" aria-hidden="true" /></button>
         </div>
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <label className="field"><span>Description</span><input autoFocus name="description" required maxLength={120} defaultValue={expected?.description ?? ''} placeholder="e.g. Salary" /></label>
@@ -761,7 +768,7 @@ function IncomeReceiptDialog({ expected, onClose, onReceive }: IncomeReceiptDial
             <h2 id="receipt-dialog-title">Nakuha na ang pera</h2>
             <p>This creates an income transaction in your ledger and updates this schedule together.</p>
           </div>
-          <button className="icon-button" type="button" aria-label="Isara" onClick={onClose} disabled={saving}>×</button>
+          <button className="icon-button" type="button" aria-label="Isara" onClick={onClose} disabled={saving} title="Isara"><X className="ui-icon" aria-hidden="true" /></button>
         </div>
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <div className="receipt-remaining"><span>Still expected</span><strong>{formatPHP(progress.remainingCentavos)}</strong></div>

@@ -107,3 +107,9 @@
 - [x] Verify offline operation, safe updates, and existing IndexedDB compatibility.
 - [ ] Run native Firefox and Safari browser checks when those browsers are available.
 - [ ] Model future transfers as paired forecast movements before offering scheduled transfers.
+
+## Phase 12 — v1.2.0 Mascot and icon system
+
+- [x] Integrate local geng branding, controlled mascot animation, and branded favicon and PWA icons.
+- [x] Use Lucide for functional UI icons and preserve existing icon selections.
+- [x] Verify browser timing, reduced motion, responsive themes, offline assets, and saved-data compatibility.

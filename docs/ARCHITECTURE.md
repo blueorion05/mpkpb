@@ -81,3 +81,9 @@ Vite emits a service worker with a build-specific static resource list. The work
 The entry domain maps future income to ExpectedIncome, future gastos and bills to FinancialObligation, and both directions of debt to DebtRecord. The form edits existing source records and retains their IDs and settlement history. Dashboard settlement uses the existing atomic ledger and schedule write with a separate actual transaction date. Future transfers require a forecast model with linked wallet movements and remain outside the quick-add schedule workflow. The database and backup schemas are unchanged.
 
 The Home month-end summary runs the expected scenario only and uses the existing forecast calculations. Planning initialization reads six required stores in one readonly transaction. Calendar and insights calculations run when their tabs are active.
+
+## Mascot and icon persistence
+
+The supplied GIF is composited into a local transparent WebP atlas. The dashboard canvas plays nine frames at the original 180 ms cadence and blends the final frame into the exact idle pose. Visibility and reduced-motion listeners control playback. Other mascot instances use the same static pose. Vite's service worker precaches the atlas, idle image, favicon, manifest, and app icons.
+
+Wallet icon IDs map directly to a fixed Lucide set. Categories accept an optional validated icon ID and existing records default to a tag. The optional field requires no structural IndexedDB migration and survives JSON backup and restore. Category icon edits preserve the record ID and all existing financial references.

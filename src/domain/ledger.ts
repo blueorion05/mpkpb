@@ -1,3 +1,4 @@
+import { isCategoryIcon, type CategoryIcon } from './categoryIcons.ts'
 import { sumCentavos } from './money.ts'
 
 export type TransactionKind = 'income' | 'expense' | 'transfer' | 'adjustment'
@@ -29,6 +30,7 @@ export interface TransactionCategory {
   name: string
   kind: CategoryKind
   normalizedName: string
+  icon?: CategoryIcon
   createdAt: string
   updatedAt: string
 }
@@ -189,6 +191,7 @@ export function isTransactionCategory(value: unknown): value is TransactionCateg
     (category.kind === 'income' || category.kind === 'expense') &&
     typeof category.normalizedName === 'string' &&
     category.normalizedName === normalizeCategoryName(category.name) &&
+    (category.icon === undefined || isCategoryIcon(category.icon)) &&
     isTimestamp(category.createdAt) &&
     isTimestamp(category.updatedAt)
   )

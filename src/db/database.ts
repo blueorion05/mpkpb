@@ -1,3 +1,4 @@
+import { isCategoryIcon, type CategoryIcon } from '../domain/categoryIcons.ts'
 import { validateCompletedDate } from '../domain/entry.ts'
 import {
   calculateWalletBalances,
@@ -1626,4 +1627,24 @@ export async function getPlanningData() {
     debts: validateDebts(debts, transactions, wallets, categories),
     obligations: validateObligations(obligations, transactions, wallets, categories),
   }
+}
+
+export async function updateCategoryIcon(id: string, icon: CategoryIcon): Promise<TransactionCategory> {
+  if (!isCategoryIcon(icon)) throw new Error('Pumili ng valid na category icon.')
+  const database = await openDatabase()
+  const transaction = writeTransaction(database, 'categories')
+  const completed = transactionComplete(transaction)
+  const store = transaction.objectStore('categories')
+  const update = async () => {
+    const category = await requestResult<unknown>(store.get(id))
+    if (!isTransactionCategory(category)) {
+      transaction.abort()
+      throw new Error('Hindi mabasa ang category. Walang na-save na icon.')
+    }
+    const updated = { ...category, icon, updatedAt: new Date().toISOString() }
+    store.put(updated)
+    return updated
+  }
+  const [updated] = await Promise.all([update(), completed])
+  return updated
 }

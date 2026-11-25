@@ -1,5 +1,10 @@
 # Progress
 
+## v1.2.0
+
+- Added controlled geng branding, the mascot favicon and PWA icons, and the curated Lucide icon system. IndexedDB schema remains v5.
+- All 42 tests, lint, type checking, and the production build passed. Edge QA covered one-shot timing, inactive and off-screen suspension, reduced motion, icon creation and editing, old wallet IDs, offline asset coverage, and the existing finance and recovery workflows. Reviewed mobile light and desktop dark rendering.
+
 ## v1.1.0
 
 - Released with dashboard quick add, schedule management, month-end projection, Taglish copy, and 115 optional punchlines.

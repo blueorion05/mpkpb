@@ -2025,3 +2025,115 @@
 .transaction-list .transaction-row {
   padding-block: .65rem;
 }
+
+.mascot {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  flex: none;
+  aspect-ratio: 256 / 253;
+}
+
+.mascot img, .mascot canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+.mascot canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.mascot canvas[hidden] {
+  display: none;
+}
+
+.mascot:has(canvas:not([hidden])) img {
+  visibility: hidden;
+}
+
+.mascot-brand {
+  width: 2.55rem;
+}
+
+.greeting-mascot {
+  width: clamp(4rem, 10vw, 7rem);
+}
+
+.mascot-empty {
+  width: 3.6rem;
+}
+
+.mascot-onboarding {
+  width: 5.5rem;
+}
+
+.greeting-copy {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot canvas { display: none; }
+  .mascot:has(canvas:not([hidden])) img { visibility: visible; }
+}
+
+.ui-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+  stroke-width: 1.8;
+  vertical-align: -.2em;
+}
+
+.card-icon .ui-icon,
+.nav-icon .ui-icon,
+.wallet-avatar .ui-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.icon-picker {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: .5rem;
+}
+
+.category-label {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+}
+
+.category-label .ui-icon {
+  width: .95rem;
+  height: .95rem;
+}
+
+.category-icon-edit {
+  padding: 0;
+  margin: .5rem 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.dialog-heading .icon-button { flex: none; }
+
+@media (max-width: 420px) {
+  .mascot-onboarding { width: 3.5rem; }
+  .greeting-mascot { width: 3.6rem; }
+}
+
+.page-heading .add-wallet-button {
+  white-space: nowrap;
+  flex: none;
+}
+
+.success-banner > .ui-icon + span,
+.error-banner > .ui-icon + span {
+  flex: 1;
+}

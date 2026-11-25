@@ -1,3 +1,5 @@
+import { CategorySymbol } from './IconPicker'
+import { Bell, LockKeyhole, Monitor, Moon, Sun } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { Wallet } from '../db/database'
 import { calculateFinancialAnalytics } from '../domain/analytics'
@@ -301,7 +303,7 @@ export default function ToolsPage({
                 <div className="tools-panel-heading"><div><h2>Reminders</h2></div><span className="tools-count">{calendar.reminders.length}</span></div>
                 {calendar.reminders.length === 0
                   ? <p className="tools-muted">No bills, expected payments, or budget limits need attention this week. Ayos ah.</p>
-                  : <ul className="reminder-list">{calendar.reminders.map((item) => <li key={item.id}><span className="reminder-mark" aria-hidden="true">!</span><div><strong>{item.title}</strong><small>{item.detail}</small></div><span className="reminder-amount">{displayAmount(item.amount, visible)}</span></li>)}</ul>}
+                  : <ul className="reminder-list">{calendar.reminders.map((item) => <li key={item.id}><span className="reminder-mark" aria-hidden="true"><Bell className="ui-icon" aria-hidden="true" /></span><div><strong>{item.title}</strong><small>{item.detail}</small></div><span className="reminder-amount">{displayAmount(item.amount, visible)}</span></li>)}</ul>}
               </section>
               <section className="panel timeline-panel" aria-label="Upcoming financial timeline">
                 <div className="tools-panel-heading"><div><h2>Calendar ng pera</h2></div><span className="tools-count">{calendar.items.length} events</span></div>
@@ -332,7 +334,7 @@ export default function ToolsPage({
             <label className="field"><span>Budget plan</span><select value={activeBudgetFilter} onChange={(event) => setBudgetFilter(event.target.value)}><option value="">All matching plans</option>{availableBudgets.map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}</select></label>
             <p>Actual ledger activity only; transfers are neutral except for their fees.</p>
           </section>
-          {loading ? <p className="loading-state">Binabasa ang galaw ng pera…</p> : dataUnavailable ? <p className="error-state">Ledger or planning data is unavailable. Retry loading local data before viewing insights.</p> : analytics.error ? <p className="error-state" role="alert">{analytics.error}</p> : analytics.result && (
+          {loading ? <p className="loading-state">Binabasa ang activity ng pera…</p> : dataUnavailable ? <p className="error-state">Ledger or planning data is unavailable. Retry loading local data before viewing insights.</p> : analytics.error ? <p className="error-state" role="alert">{analytics.error}</p> : analytics.result && (
             <>
               <section className="analytics-summary" aria-label="Income and expenses">
                 <article className="panel analytics-metric"><span className="metric-label">INCOME</span><strong>{displayAmount(analytics.result.incomeCentavos, visible)}</strong></article>
@@ -349,8 +351,8 @@ export default function ToolsPage({
                   })}
                   <div className="trend-totals"><span>Income <strong>{displayAmount(analytics.result.incomeCentavos, visible)}</strong></span><span>Expenses <strong>{displayAmount(analytics.result.expenseCentavos, visible)}</strong></span></div>
                 </article>
-                <CategoryBreakdown title="Spending by category" categories={analytics.result.expenseCategories} visible={visible} />
-                <CategoryBreakdown title="Income by category" categories={analytics.result.incomeCategories} visible={visible} />
+                <CategoryBreakdown title="Spending by category" categories={analytics.result.expenseCategories} savedCategories={categories} visible={visible} />
+                <CategoryBreakdown title="Income by category" categories={analytics.result.incomeCategories} savedCategories={categories} visible={visible} />
                 <article className="panel analytics-panel">
                   <div className="tools-panel-heading"><div><h2>Pera sa bawat wallet</h2></div></div>
                   {analytics.walletTotals?.length ? <ul className="metric-list">{analytics.walletTotals.map((wallet) => <li key={wallet.id}><span><strong>{wallet.name}</strong><small>{wallet.protected ? 'Protected' : wallet.archived ? 'Archived' : 'Spendable'}</small></span><strong>{displayAmount(wallet.amount, visible)}</strong></li>)}</ul> : <p className="tools-muted">Add a wallet to see your distribution.</p>}
@@ -374,21 +376,21 @@ export default function ToolsPage({
       {tab === 'settings' && (
         <section id="tools-panel-settings" role="tabpanel" tabIndex={0} aria-labelledby="tools-tab-settings" className="tools-content">
           <section className="panel settings-panel">
-            <div className="settings-title"><span className="card-icon">☼</span><div><h2>Appearance</h2><p>Piliin ang itsura ng app sa device na ito.</p></div></div>
+            <div className="settings-title"><span className="card-icon"><Sun className="ui-icon" aria-hidden="true" /></span><div><h2>Appearance</h2><p>Piliin ang itsura ng app sa device na ito.</p></div></div>
             <div className="theme-options" role="group" aria-label="Color theme">
               {([
-                { id: 'system', label: 'System', description: 'Follow your device settings', icon: '▣' },
-                { id: 'light', label: 'Light', description: 'Bright and clear', icon: '☼' },
-                { id: 'dark', label: 'Dark', description: 'Easy on the eyes', icon: '☾' },
+                { id: 'system', label: 'System', description: 'Follow your device settings', icon: Monitor },
+                { id: 'light', label: 'Light', description: 'Bright and clear', icon: Sun },
+                { id: 'dark', label: 'Dark', description: 'Easy on the eyes', icon: Moon },
               ] as const).map((option) => (
                 <button className={`theme-option${theme === option.id ? ' selected' : ''}`} key={option.id} type="button" aria-pressed={theme === option.id} onClick={() => onThemeChange(option.id)}>
-                  <span aria-hidden="true">{option.icon}</span><span><strong>{option.label}</strong><small>{option.description}</small></span>{theme === option.id && <i aria-hidden="true" />}
+                  <option.icon className="ui-icon" aria-hidden="true" /><span><strong>{option.label}</strong><small>{option.description}</small></span>{theme === option.id && <i aria-hidden="true" />}
                 </button>
               ))}
             </div>
           </section>
           <section className="panel about-panel">
-            <span className="card-icon mint-icon">⌑</span><div><h2>Privacy ng data</h2>            <p>Sa browser na ito lang naka-save ang pera records mo. Mawawala ang data kapag nilinis ang site storage. Magtabi ng JSON backup.</p></div>
+            <span className="card-icon mint-icon"><LockKeyhole className="ui-icon" aria-hidden="true" /></span><div><h2>Privacy ng data</h2>            <p>Sa browser na ito lang naka-save ang pera records mo. Mawawala ang data kapag nilinis ang site storage. Magtabi ng JSON backup.</p></div>
           </section>
         </section>
       )}
@@ -399,9 +401,11 @@ export default function ToolsPage({
 function CategoryBreakdown({
   title,
   categories,
+  savedCategories,
   visible,
 }: {
   title: string
+  savedCategories: readonly TransactionCategory[]
   categories: readonly { id: string; name: string; amountCentavos: number }[]
   visible: boolean
 }) {
@@ -409,7 +413,7 @@ function CategoryBreakdown({
   return (
     <article className="panel analytics-panel">
       <div className="tools-panel-heading"><div><h2>{title}</h2></div></div>
-      {categories.length === 0 ? <p className="tools-muted">No categorized activity in this period yet.</p> : <ul className="category-breakdown">{categories.slice(0, 8).map((category) => <li key={category.id}><div><strong>{category.name}</strong><span>{displayAmount(category.amountCentavos, visible)}</span></div><div className="category-track"><span style={{ width: `${category.amountCentavos / maximum * 100}%` }} /></div></li>)}</ul>}
+      {categories.length === 0 ? <p className="tools-muted">No categorized activity in this period yet.</p> : <ul className="category-breakdown">{categories.slice(0, 8).map((category) => <li key={category.id}><div><strong className="category-label"><CategorySymbol icon={savedCategories.find((saved) => saved.id === category.id)?.icon} /> {category.name}</strong><span>{displayAmount(category.amountCentavos, visible)}</span></div><div className="category-track"><span style={{ width: `${category.amountCentavos / maximum * 100}%` }} /></div></li>)}</ul>}
     </article>
   )
 }

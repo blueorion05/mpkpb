@@ -13,7 +13,7 @@ MPKPB? (May Pera Ka Pa Ba?) is a responsive, local-first personal finance app pr
 
 ## Primary areas
 
-Dashboard, wallets, transactions, budget plans, forecast, debts, insights, save history, and settings. Mobile navigation prioritizes Home, Wallets, Galaw, Aabot pa?, Budget, and Iba pa.
+Dashboard, wallets, transactions, budget plans, forecast, debts, insights, save history, and settings. Mobile navigation prioritizes Home, Wallets, Activity, Aabot pa?, Budget, and More.
 
 ## Financial features
 
@@ -52,3 +52,7 @@ The Home dashboard shows actual and spendable balances, money expected and due b
 - What-if purchases are temporary forecast outflows; they are never saved as transactions or included in actual balances.
 - Analytics use posted ledger entries only, exclude debt settlements already represented by a linked original transaction, and treat transfer principal as neutral while including transfer fees as expenses.
 - Calendar reminders are generated and displayed locally from upcoming/overdue schedules and active budget utilization; they do not use operating-system notifications or transmit financial data.
+
+## Branding and iconography
+
+The supplied geng mascot is the product brand. Only the dashboard instance animates. It stays idle between one-shot sequences and remains static with reduced motion. Compact branding and app icons use the original idle artwork. Lucide supplies functional icons, with a curated picker for wallets and financial categories. Existing wallet icon IDs and categories remain valid.

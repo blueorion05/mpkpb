@@ -1,3 +1,4 @@
+import { ArrowDownLeft, ArrowUpRight, TriangleAlert } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
 import type { Wallet } from '../db/database'
 import type { DebtRecord, FinancialObligation } from '../domain/debts'
@@ -434,7 +435,7 @@ export default function ForecastPage({
             <section className="forecast-shortage" role="alert" aria-label="Projected cash shortages">
               <div>
                 <h2>
-                  {relevantShortages.length > 0
+                  <TriangleAlert className="ui-icon" aria-hidden="true" /> {relevantShortages.length > 0
                     ? 'Posibleng kukulangin ang laman ng ilang wallet.'
                     : 'Posibleng bumaba sa reserba ang pwedeng gastusin.'}
                 </h2>
@@ -498,7 +499,7 @@ export default function ForecastPage({
                   return (
                     <li key={event.id}>
                       <span className={`forecast-event-icon ${event.direction}`} aria-hidden="true">
-                        {event.direction === 'inflow' ? '↗' : '↘'}
+                        {event.direction === 'inflow' ? <ArrowDownLeft className="ui-icon" aria-hidden="true" /> : <ArrowUpRight className="ui-icon" aria-hidden="true" />}
                       </span>
                       <span className="forecast-event-copy">
                         <strong>{event.label}</strong>

@@ -9,7 +9,7 @@ function offlineShell(): Plugin {
     apply: 'build',
     generateBundle(_options, bundle) {
       const worker = readFileSync(new URL('./src/service-worker.js', import.meta.url), 'utf8')
-      const iconsAndManifest = ['app-192.png', 'app-512.png', 'manifest.webmanifest']
+      const iconsAndManifest = ['app-192.png', 'app-512.png', 'app-maskable.png', 'favicon-32.png', 'manifest.webmanifest']
       const files = Object.keys(bundle).filter((name) => name !== 'index.html' && !name.endsWith('.map'))
       const hash = createHash('sha256').update(worker).update(JSON.stringify(files))
         .update(readFileSync(new URL('./index.html', import.meta.url)))

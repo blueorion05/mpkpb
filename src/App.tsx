@@ -1,3 +1,7 @@
+import { CircleAlert, CircleCheck, Activity, ChartNoAxesCombined, ClipboardList, ChevronRight, Ellipsis, Eye, EyeOff, House, LockKeyhole, Monitor, Moon, Plus, ShieldCheck, Sun, Wallet as WalletIconGlyph, X, type LucideIcon } from 'lucide-react'
+import Mascot from './components/Mascot'
+import { WalletIconPicker, WalletSymbol } from './components/IconPicker'
+import type { CategoryIcon } from './domain/categoryIcons'
 import UpcomingList from './components/UpcomingList'
 import type { ScheduledRecord } from './domain/entry'
 import { calculateForecast } from './domain/forecast'
@@ -9,6 +13,7 @@ import { GENG_EXPRESSION, getGengMessage, type GengContext } from './domain/humo
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   addCategory,
+  updateCategoryIcon,
   archiveWallet,
   createWallet,
   deleteTransaction,
@@ -35,9 +40,7 @@ import {
   archiveExpectedIncome,
   updateWallet,
   WALLET_COLORS,
-  WALLET_ICONS,
   type WalletColor,
-  type WalletIcon,
   type Wallet,
   type UpdatedScheduledEvent,
 } from './db/database'
@@ -68,30 +71,14 @@ const ToolsPage = lazy(() => import('./components/ToolsPage'))
 type Page = 'home' | 'wallets' | 'activity' | 'forecast' | 'plans' | 'more'
 type Theme = 'system' | 'light' | 'dark'
 
-const pages: { id: Page; label: string; icon: string }[] = [
-  { id: 'home', label: 'Home', icon: '⌂' },
-  { id: 'wallets', label: 'Wallets', icon: '▣' },
-  { id: 'activity', label: 'Galaw', icon: '↗' },
-  { id: 'forecast', label: 'Aabot pa?', icon: '⌁' },
-  { id: 'plans', label: 'Budget', icon: '▤' },
-  { id: 'more', label: 'Iba pa', icon: '•••' },
+const pages: { id: Page; label: string; icon: LucideIcon }[] = [
+  { id: 'home', label: 'Home', icon: House },
+  { id: 'wallets', label: 'Wallets', icon: WalletIconGlyph },
+  { id: 'activity', label: 'Activity', icon: Activity },
+  { id: 'forecast', label: 'Aabot pa?', icon: ChartNoAxesCombined },
+  { id: 'plans', label: 'Budget', icon: ClipboardList },
+  { id: 'more', label: 'More', icon: Ellipsis },
 ]
-const iconLabels: Record<WalletIcon, string> = {
-  wallet: 'Wallet',
-  cash: 'Cash',
-  bank: 'Bank',
-  savings: 'Savings',
-  card: 'Card',
-  other: 'Other',
-}
-const iconGlyphs: Record<WalletIcon, string> = {
-  wallet: '▣',
-  cash: '₱',
-  bank: '▥',
-  savings: '◒',
-  card: '▤',
-  other: '⋯',
-}
 const colorLabels: Record<WalletColor, string> = {
   green: 'Green',
   blue: 'Blue',
@@ -515,7 +502,7 @@ function App() {
     closeEntry()
   }
 
-  async function handleCreateCategory(name: string, kind: 'income' | 'expense') {
+  async function handleCreateCategory(name: string, kind: 'income' | 'expense', icon?: CategoryIcon) {
     const trimmedName = name.trim()
     if (!trimmedName || trimmedName.length > 40) {
       throw new Error('Category names must contain 1–40 characters.')
@@ -530,12 +517,18 @@ function App() {
       name: trimmedName,
       kind,
       normalizedName,
+      icon,
       createdAt: now,
       updatedAt: now,
     }
     await addCategory(category)
     setCategories((current) => [...current, category])
     return category
+  }
+
+  async function handleCategoryIcon(id: string, icon: CategoryIcon) {
+    const updated = await updateCategoryIcon(id, icon)
+    setCategories((current) => current.map((category) => category.id === id ? updated : category))
   }
 
   async function confirmDeleteTransaction() {
@@ -800,7 +793,7 @@ function App() {
       <a className="skip-link" href="#main-content">Dumiretso sa content</a>
       <aside className="sidebar">
         <a className="brand" href="#" onClick={() => setPage('home')}>
-          <span className="brand-mark">m?</span>
+          <Mascot className="mascot-brand" />
           <span><strong>mpkpb?</strong><small>May Pera Ka Pa Ba?</small></span>
         </a>
 
@@ -813,14 +806,14 @@ function App() {
               onClick={() => setPage(item.id)}
               aria-current={page === item.id ? 'page' : undefined}
             >
-              <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+              <span className="nav-icon" aria-hidden="true"><item.icon className="ui-icon" aria-hidden="true" /></span>
               {item.label}
               {page === item.id && <span className="nav-dot" />}
             </button>
           ))}
         </nav>
         <div className="privacy-card">
-          <span className="privacy-lock" aria-hidden="true">⌑</span>
+          <span className="privacy-lock" aria-hidden="true"><LockKeyhole className="ui-icon" aria-hidden="true" /></span>
           <strong>Dito lang ang data mo.</strong>
           <p>Sa device na ito lang naka-save. Walang account o cloud.</p>
         </div>
@@ -831,7 +824,7 @@ function App() {
 
       <div className="main-column">
         <header className="topbar">
-          <div className="mobile-brand"><span className="brand-mark">m?</span><strong>mpkpb?</strong></div>
+          <div className="mobile-brand"><Mascot className="mascot-brand" /><strong>mpkpb?</strong></div>
           <div className="breadcrumb"><strong>{currentLabel}</strong></div>
           <div className="top-actions">
             <span className="today-label">{todayLabel}</span>
@@ -845,14 +838,14 @@ function App() {
               aria-label={balanceVisible ? 'Itago ang balances' : 'Ipakita ang balances'}
               title={balanceVisible ? 'Itago ang balances' : 'Ipakita ang balances'}
               onClick={() => setBalanceVisible((visible) => !visible)}
-            >{balanceVisible ? '◉' : '◎'}</button>
+            >{balanceVisible ? <Eye className="ui-icon" aria-hidden="true" /> : <EyeOff className="ui-icon" aria-hidden="true" />}</button>
             <button
               className="icon-button"
               type="button"
               aria-label={`Current theme: ${theme}. Change theme`}
               title={`Theme: ${theme}`}
               onClick={() => void changeTheme(theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system')}
-            >{theme === 'system' ? '▣' : theme === 'light' ? '☼' : '☾'}</button>
+            >{theme === 'system' ? <Monitor className="ui-icon" aria-hidden="true" /> : theme === 'light' ? <Sun className="ui-icon" aria-hidden="true" /> : <Moon className="ui-icon" aria-hidden="true" />}</button>
           </div>
         </header>
 
@@ -863,7 +856,7 @@ function App() {
           )}
           {pageError && (
             <div className="error-banner" role="alert">
-              <span>{pageError}</span>
+              <CircleAlert className="ui-icon" aria-hidden="true" /><span>{pageError}</span>
               <button
                 type="button"
                 className="text-button"
@@ -883,13 +876,14 @@ function App() {
           )}
           {successMessage && (
             <div className="success-banner" role="status">
-              <span>{successMessage}</span>
+              <CircleCheck className="ui-icon" aria-hidden="true" /><span>{successMessage}</span>
               <button type="button" className="text-button" onClick={() => setSuccessMessage('')}>Isara</button>
             </div>
           )}
           {page === 'home' && (
             <Dashboard
               displayName={displayName}
+              animateMascot={!dialogOpen && !transactionDialogOpen && !walletToArchive && !transactionToDelete}
               gengMessage={humorEnabled && !loading && !walletLoadError
                 ? getGengMessage(walletContext, { humorEnabled, profanityEnabled }) : undefined}
               wallets={activeWallets}
@@ -1018,7 +1012,7 @@ function App() {
             onClick={() => setPage(item.id)}
             aria-current={page === item.id ? 'page' : undefined}
           >
-            <span aria-hidden="true">{item.icon}</span><small>{item.label}</small>
+            <span aria-hidden="true"><item.icon className="ui-icon" aria-hidden="true" /></span><small>{item.label}</small>
           </button>
         ))}
       </nav>
@@ -1032,12 +1026,13 @@ function App() {
         >
           <section ref={walletDialogRef} className="wallet-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
             <div className="dialog-heading">
+              {isOnboarding && <Mascot className="mascot-onboarding" />}
               <div>
                 <span className="eyebrow">{isOnboarding ? 'WELCOME TO MPKPB?' : editingWallet ? 'WALLET DETAILS' : 'WALLET SETUP'}</span>
                 <h2 id="dialog-title">{isOnboarding ? 'Saan mo nilalagay ang pera mo?' : editingWallet ? 'Edit wallet' : 'Add wallet'}</h2>
                 <p>{isOnboarding ? 'Dito lang sa browser ang data mo. Add ka ng wallet para magsimula, o i-skip muna.' : 'Cash, GCash, bank account, o saan man nakalagay ang pera mo.'}</p>
               </div>
-              <button className="icon-button" type="button" aria-label="Isara" onClick={() => void closeWalletDialog()}>×</button>
+              <button className="icon-button" type="button" aria-label="Isara" onClick={() => void closeWalletDialog()} title="Isara"><X className="ui-icon" aria-hidden="true" /></button>
             </div>
             <form className="wallet-form" onSubmit={(event) => void handleSaveWallet(event)}>
               {wallets.length === 0 && !editingWallet && (
@@ -1058,12 +1053,7 @@ function App() {
                     <option>Savings</option><option>Emergency fund</option><option>Other</option>
                   </select>
                 </label>
-                <label className="field">
-                  <span>Wallet icon</span>
-                  <select name="walletIcon" defaultValue={editingWallet?.icon ?? defaultWalletIcon('E-wallet')}>
-                    {WALLET_ICONS.map((icon) => <option key={icon} value={icon}>{iconLabels[icon]}</option>)}
-                  </select>
-                </label>
+                <WalletIconPicker initial={editingWallet?.icon ?? defaultWalletIcon('E-wallet')} />
               </div>
               <div className="form-row">
                 <label className="field">
@@ -1099,9 +1089,9 @@ function App() {
               {formError && <p className="form-error" role="alert">{formError}</p>}
               <div className="dialog-actions">
                 <button className="button button-quiet" type="button" onClick={() => void closeWalletDialog()}>{isOnboarding ? 'Skip for now' : 'Cancel'}</button>
-                <button className="button button-primary" type="submit">{editingWallet ? 'Save changes' : '＋ Save wallet'}</button>
+                <button className="button button-primary" type="submit">{editingWallet ? 'Save changes' : 'Save wallet'}</button>
               </div>
-              <p className="form-privacy">⌑ Saved on this device only.</p>
+              <p className="form-privacy"><LockKeyhole className="ui-icon" aria-hidden="true" /> Saved on this device only.</p>
             </form>
           </section>
         </div>
@@ -1116,6 +1106,7 @@ function App() {
           onSchedule={handleSaveSchedule}
           onClose={closeEntry}
           onSave={handleSaveTransaction}
+          onCategoryIcon={handleCategoryIcon}
           onCreateCategory={handleCreateCategory}
         />
       )}
@@ -1169,6 +1160,7 @@ function App() {
 
 function Dashboard({
   displayName,
+  animateMascot,
   gengMessage,
   wallets,
   totals,
@@ -1185,6 +1177,7 @@ function Dashboard({
 }: {
   gengMessage?: string
   displayName: string
+  animateMascot: boolean
   wallets: Wallet[]
   totals: { all: number; spendable: number } | null
   balances: ReadonlyMap<string, number> | null
@@ -1207,22 +1200,25 @@ function Dashboard({
   return (
     <>
       <div className="page-heading">
-        <div>
-          <h1>Kumusta{displayName ? ', ' + displayName : ''}<span className="green-dot">.</span></h1>
-          <p>Eto ang pera mo ngayon at ang paparating ngayong buwan.</p>
+        <div className="greeting-copy">
+          <Mascot animated={animateMascot} className="greeting-mascot" />
+          <div>
+            <h1>Kumusta{displayName ? ', ' + displayName : ''}<span className="green-dot">.</span></h1>
+            <p>Eto ang pera mo ngayon at ang paparating ngayong buwan.</p>
+          </div>
         </div>
         <button className="button button-primary add-wallet-button" type="button" onClick={wallets.length ? onQuickAdd : onAddWallet} disabled={loading || dataUnavailable}>
-          <span aria-hidden="true">＋</span> {wallets.length ? 'Add record' : 'Add wallet'}
+          <Plus className="ui-icon" aria-hidden="true" /> {wallets.length ? 'Add record' : 'Add wallet'}
         </button>
       </div>
       <section className="balance-grid" aria-label="Balance overview">
         <article className="balance-card primary-card">
-          <div className="card-label-row"><span className="metric-label">Pera mo ngayon</span><span className="card-icon">▣</span></div>
+          <div className="card-label-row"><span className="metric-label">Pera mo ngayon</span><span className="card-icon"><WalletIconGlyph className="ui-icon" aria-hidden="true" /></span></div>
           <strong className="balance-amount">{loading ? '…' : totals ? visible ? formatPHP(totals.all) : '₱ ••••••' : '—'}</strong>
           <span className="metric-caption">Kasama lahat ng wallet</span>
         </article>
         <article className="balance-card">
-          <div className="card-label-row"><span className="metric-label">Pwedeng gastusin</span><span className="card-icon mint-icon">✳</span></div>
+          <div className="card-label-row"><span className="metric-label">Pwedeng gastusin</span><span className="card-icon mint-icon"><ShieldCheck className="ui-icon" aria-hidden="true" /></span></div>
           <strong className="balance-amount">{loading ? '…' : totals ? visible ? formatPHP(totals.spendable) : '₱ ••••••' : '—'}</strong>
           <span className="metric-caption">Hiwalay ang pera na hindi gagalawin</span>
         </article>
@@ -1249,7 +1245,7 @@ function Dashboard({
         <section className="panel wallet-panel">
           <div className="panel-heading">
             <div><h2>Mga wallet mo</h2></div>
-            {wallets.length > 0 && <button className="link-button" type="button" onClick={onViewWallets}>View all ›</button>}
+            {wallets.length > 0 && <button className="link-button" type="button" onClick={onViewWallets}>View all <ChevronRight className="ui-icon" aria-hidden="true" /></button>}
           </div>
           {loading ? (
             <p className="loading-state">Binabasa ang wallet mo…</p>
@@ -1257,9 +1253,8 @@ function Dashboard({
             <p className="error-state">Wallet details could not be loaded. Use the retry action above to try again.</p>
           ) : wallets.length === 0 ? (
             <div className="empty-wallets">
-              <span className="empty-icon" aria-hidden="true">▣</span>
               <div><strong>Wala pang wallet.</strong><p>Ilagay ang cash, GCash, o bank account na gusto mong i-track.</p></div>
-              <button className="button button-outline" type="button" onClick={onAddWallet}>Set up a wallet ›</button>
+              <button className="button button-outline" type="button" onClick={onAddWallet}>Set up a wallet <ChevronRight className="ui-icon" aria-hidden="true" /></button>
             </div>
           ) : (
             <div className="wallet-list">
@@ -1269,7 +1264,7 @@ function Dashboard({
         </section>
       </div>
 
-      <div className="privacy-note"><span aria-hidden="true">⌑</span><p><strong>Local-first, for real.</strong> Data stays in this browser on this device. Clearing browser storage removes it. Download a backup from More.</p></div>
+      <div className="privacy-note"><span aria-hidden="true"><LockKeyhole className="ui-icon" aria-hidden="true" /></span><p><strong>Local-first, for real.</strong> Data stays in this browser on this device. Clearing browser storage removes it. Download a backup from More.</p></div>
     </>
   )
 }
@@ -1291,7 +1286,7 @@ function WalletRow({
 }) {
   return (
     <div className="wallet-row">
-      <span className={`wallet-avatar wallet-color-${wallet.color}`} aria-hidden="true">{iconGlyphs[wallet.icon]}</span>
+      <span className={`wallet-avatar wallet-color-${wallet.color}`} aria-hidden="true"><WalletSymbol icon={wallet.icon} /></span>
       <span className="wallet-info"><strong>{wallet.name}</strong><small>{wallet.type}{wallet.protected ? ' · Protected' : ''}</small></span>
       <strong className="wallet-amount">{visible ? balanceCentavos === undefined ? '—' : formatPHP(balanceCentavos) : '₱ ••••••'}</strong>
       {(onEdit || onArchive || onRestore) ? (
@@ -1300,7 +1295,7 @@ function WalletRow({
           {onArchive && <button className="wallet-action archive-action" type="button" onClick={() => onArchive(wallet)} aria-label={`Archive ${wallet.name}`}>Archive</button>}
           {onRestore && <button className="wallet-action" type="button" onClick={() => onRestore(wallet)} aria-label={`Restore ${wallet.name}`}>Restore</button>}
         </div>
-      ) : <span className="row-chevron" aria-hidden="true">›</span>}
+      ) : <span className="row-chevron" aria-hidden="true"><ChevronRight className="ui-icon" aria-hidden="true" /></span>}
     </div>
   )
 }
@@ -1334,7 +1329,7 @@ function WalletsPage({
     <>
       <div className="page-heading">
         <div><h1>Wallets</h1><p>Tingnan ang cash, e-wallet, bank, at ipon mo.</p></div>
-        <button className="button button-primary add-wallet-button" type="button" onClick={onAdd}><span aria-hidden="true">＋</span> Add wallet</button>
+        <button className="button button-primary add-wallet-button" type="button" onClick={onAdd}><Plus className="ui-icon" aria-hidden="true" /> Add wallet</button>
       </div>
       <section className="panel wallets-page-panel">
         <div className="wallets-summary"><div><span className="metric-label">TOTAL ACROSS WALLETS</span><strong>{loading ? '…' : totals ? visible ? formatPHP(totals.all) : '₱ ••••••' : '—'}</strong></div><span>{loading ? 'Loading wallets…' : dataUnavailable ? '— active · — archived' : `${wallets.length} active · ${archivedWallets.length} archived`}</span></div>
@@ -1343,14 +1338,14 @@ function WalletsPage({
         ) : dataUnavailable ? (
           <p className="error-state">Wallet details could not be loaded. Use the retry action above to try again.</p>
         ) : wallets.length === 0 && archivedWallets.length === 0 ? (
-          <div className="empty-page"><span className="empty-icon" aria-hidden="true">▣</span><h2>Wala pang wallet</h2><p>Add ka ng wallet para makita lahat ng pera mo rito.</p><button className="button button-primary" type="button" onClick={onAdd}>＋ Add your first wallet</button></div>
+          <div className="empty-page"><Mascot className="mascot-empty" /><h2>Wala pang wallet</h2><p>Add ka ng wallet para makita lahat ng pera mo rito.</p><button className="button button-primary" type="button" onClick={onAdd}><Plus className="ui-icon" aria-hidden="true" /> Add your first wallet</button></div>
         ) : (
           <>
             {wallets.length > 0 ? (
               <div className="wallet-list">
                 {wallets.map((wallet) => <WalletRow key={wallet.id} wallet={wallet} balanceCentavos={balances?.get(wallet.id)} visible={visible} onEdit={onEdit} onArchive={onArchive} />)}
               </div>
-            ) : !loading && <div className="empty-active-wallets"><p>No active wallets. Your archived balances remain in the total.</p><button className="button button-outline" type="button" onClick={onAdd}>＋ Add wallet</button></div>}
+            ) : !loading && <div className="empty-active-wallets"><p>No active wallets. Your archived balances remain in the total.</p><button className="button button-outline" type="button" onClick={onAdd}><Plus className="ui-icon" aria-hidden="true" /> Add wallet</button></div>}
             {archivedWallets.length > 0 && (
               <section className="archived-wallets" aria-labelledby="archived-wallets-title">
                 <h2 id="archived-wallets-title">Mga naka-archive na wallet</h2>

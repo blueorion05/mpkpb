@@ -1,3 +1,5 @@
+import { Plus, X } from 'lucide-react'
+import Mascot from './Mascot'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   getDebtProgress,
@@ -179,7 +181,7 @@ export default function DebtsPage({
           onClick={() => activeTab === 'debts' ? setEditingDebt(null) : setEditingObligation(null)}
           disabled={activeWallets.length === 0}
         >
-          ＋ {activeTab === 'debts' ? 'Add debt' : 'Add bill'}
+          <Plus className="ui-icon" aria-hidden="true" /> {activeTab === 'debts' ? 'Add debt' : 'Add bill'}
         </button>
       </div>
       <div className="plans-toolbar">
@@ -218,10 +220,10 @@ export default function DebtsPage({
         <section id="debts-panel" role="tabpanel" aria-labelledby="debts-tab" className="plans-list debts-list">
           {visibleDebts.length === 0 ? (
             <div className="panel plans-empty">
-              <span className="empty-icon">↔</span>
+              <Mascot className="mascot-empty" />
               <h2>{includeArchived ? 'No archived debts' : 'Wala pang utang'}</h2>
               <p>Add money you owe or money owed to you, and keep every partial settlement in view.</p>
-              {!includeArchived && <button className="button button-primary" type="button" onClick={() => setEditingDebt(null)}>＋ Add a debt</button>}
+              {!includeArchived && <button className="button button-primary" type="button" onClick={() => setEditingDebt(null)}><Plus className="ui-icon" aria-hidden="true" /> Add a debt</button>}
             </div>
           ) : visibleDebts.map((debt) => {
             const progress = getDebtProgress(debt, todayDateOnly())
@@ -294,10 +296,10 @@ export default function DebtsPage({
         <section id="bills-panel" role="tabpanel" aria-labelledby="bills-tab" className="plans-list debts-list">
           {visibleObligations.length === 0 ? (
             <div className="panel plans-empty">
-              <span className="empty-icon">◷</span>
+              <Mascot className="mascot-empty" />
               <h2>{includeArchived ? 'No archived bills' : 'Wala pang naka-schedule na bayarin'}</h2>
               <p>Add an upcoming bill or expense to track its due date and partial payments.</p>
-              {!includeArchived && <button className="button button-primary" type="button" onClick={() => setEditingObligation(null)}>＋ Add a bill</button>}
+              {!includeArchived && <button className="button button-primary" type="button" onClick={() => setEditingObligation(null)}><Plus className="ui-icon" aria-hidden="true" /> Add a bill</button>}
             </div>
           ) : visibleObligations.map((obligation) => {
             const progress = getObligationProgress(obligation, todayDateOnly())
@@ -478,7 +480,7 @@ function DebtDialog({ debt, wallets, categories, transactions, onClose, onSave }
       <section ref={dialogRef} className="wallet-dialog planning-dialog" role="dialog" aria-modal="true" aria-labelledby="debt-dialog-title">
         <div className="dialog-heading">
           <div><span className="eyebrow">{debt ? 'UPDATE A DEBT' : 'TRACK A DEBT'}</span><h2 id="debt-dialog-title">{debt ? 'Edit utang' : 'Add utang'}</h2><p>Magbabago lang ang wallet kapag ni-record mo ang aktwal na bayad.</p></div>
-          <button className="icon-button" type="button" aria-label="Isara" disabled={saving} onClick={onClose}>×</button>
+          <button className="icon-button" type="button" aria-label="Isara" disabled={saving} onClick={onClose} title="Isara"><X className="ui-icon" aria-hidden="true" /></button>
         </div>
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <label className="field"><span>Debt type</span><select name="direction" value={direction} onChange={(event) => setDirection(event.target.value === 'receivable' ? 'receivable' : 'payable')} disabled={hasSettlements}><option value="payable">Money I owe</option><option value="receivable">Money owed to me</option></select></label>
@@ -576,7 +578,7 @@ function ObligationDialog({ obligation, wallets, categories, onClose, onSave }: 
       <section ref={dialogRef} className="wallet-dialog planning-dialog" role="dialog" aria-modal="true" aria-labelledby="bill-dialog-title">
         <div className="dialog-heading">
           <div><span className="eyebrow">{obligation ? 'UPDATE A BILL' : 'PLAN A PAYMENT'}</span><h2 id="bill-dialog-title">{obligation ? 'Edit bayarin' : 'I-schedule ang bayarin'}</h2><p>Sa forecast muna ang bayarin hanggang ma-record ang bayad.</p></div>
-          <button className="icon-button" type="button" aria-label="Isara" disabled={saving} onClick={onClose}>×</button>
+          <button className="icon-button" type="button" aria-label="Isara" disabled={saving} onClick={onClose} title="Isara"><X className="ui-icon" aria-hidden="true" /></button>
         </div>
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <label className="field"><span>Description</span><input autoFocus name="description" required maxLength={120} defaultValue={obligation?.description ?? ''} placeholder="e.g. Electricity" /></label>
@@ -637,7 +639,7 @@ function PaymentDialog({ target, onClose, onSave }: PaymentDialogProps) {
       <section ref={dialogRef} className="wallet-dialog planning-dialog" role="dialog" aria-modal="true" aria-labelledby="payment-dialog-title">
         <div className="dialog-heading">
           <div><h2 id="payment-dialog-title">{title}</h2><p>{description} · Due {displayDate(target.dueOn)}</p></div>
-          <button className="icon-button" type="button" aria-label="Isara" disabled={saving} onClick={onClose}>×</button>
+          <button className="icon-button" type="button" aria-label="Isara" disabled={saving} onClick={onClose} title="Isara"><X className="ui-icon" aria-hidden="true" /></button>
         </div>
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <div className="receipt-remaining"><span>Still due</span><strong>{formatPHP(target.remaining)}</strong></div>
