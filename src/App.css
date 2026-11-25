@@ -1603,3 +1603,261 @@
     padding: 0 5px;
   }
 }
+
+.activity-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.activity-metric {
+  display: grid;
+  min-width: 0;
+  gap: 9px;
+  padding: 15px 17px;
+}
+
+.activity-metric strong {
+  overflow: hidden;
+  font-size: clamp(17px, 2vw, 23px);
+  letter-spacing: -0.5px;
+  text-overflow: ellipsis;
+}
+
+.activity-panel {
+  padding: 18px;
+}
+
+.activity-count {
+  color: var(--text-soft);
+  font-size: 11px;
+}
+
+.transaction-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 11px;
+  margin: 15px 0 4px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-subtle);
+}
+
+.transaction-filters .search-field {
+  grid-column: span 2;
+}
+
+.transaction-filters .field input,
+.transaction-filters .field select {
+  min-width: 0;
+}
+
+.transaction-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.transaction-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 3px;
+  border-bottom: 1px solid var(--border);
+}
+
+.transaction-row:last-child {
+  border-bottom: 0;
+}
+
+.transaction-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 11px;
+  color: var(--brand-dark);
+  background: var(--brand-wash);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.transaction-expense .transaction-icon {
+  color: #a64c40;
+  background: #faecea;
+}
+
+.transaction-transfer .transaction-icon,
+.transaction-adjustment .transaction-icon {
+  color: #7866b4;
+  background: #f0edfa;
+}
+
+.transaction-info {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.transaction-info strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transaction-info > span,
+.transaction-info small {
+  overflow: hidden;
+  color: var(--text-soft);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transaction-amount {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.transaction-income .transaction-amount,
+.transaction-adjustment .transaction-amount {
+  color: var(--brand-dark);
+}
+
+.transaction-expense .transaction-amount {
+  color: #a64c40;
+}
+
+.transaction-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.category-field {
+  display: grid;
+  gap: 8px;
+}
+
+.category-field > .text-button {
+  justify-self: start;
+  padding: 0;
+}
+
+.inline-category-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 9px;
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+}
+
+.inline-category-form .button {
+  min-height: 38px;
+}
+
+.field-note {
+  color: var(--text-soft);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.transaction-dialog {
+  width: min(100%, 560px);
+}
+
+.transaction-dialog .wallet-form {
+  gap: 12px;
+}
+
+.transaction-empty {
+  padding: 22px 10px;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+.button:disabled,
+.wallet-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+  .activity-summary {
+    gap: 7px;
+  }
+
+  .activity-metric {
+    gap: 7px;
+    padding: 11px 9px;
+  }
+
+  .activity-metric strong {
+    font-size: clamp(12px, 3.8vw, 18px);
+  }
+
+  .activity-panel {
+    padding: 13px;
+  }
+
+  .transaction-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .transaction-filters .search-field {
+    grid-column: 1 / -1;
+  }
+
+  .transaction-row {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 12px 0;
+  }
+
+  .transaction-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .transaction-info strong {
+    font-size: 12px;
+  }
+
+  .transaction-amount {
+    align-self: start;
+    font-size: 11px;
+  }
+
+  .transaction-actions {
+    grid-column: 2 / -1;
+    justify-self: end;
+    margin-top: -3px;
+  }
+}
+
+@media (max-width: 390px) {
+  .activity-summary .metric-label {
+    font-size: 7px;
+    letter-spacing: 0.3px;
+  }
+
+  .transaction-filters .field input,
+  .transaction-filters .field select {
+    padding-right: 5px;
+    padding-left: 7px;
+    font-size: 10px;
+  }
+
+  .inline-category-form {
+    grid-template-columns: 1fr;
+  }
+}

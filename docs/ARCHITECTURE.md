@@ -3,27 +3,33 @@
 ## Current layout
 
 - `src/App.tsx`: responsive app shell, navigation, first-run onboarding, wallet management, and foundation views.
-- `src/db/database.ts`: browser-native IndexedDB database, schema migration, and typed wallet/preference operations.
+- `src/components/ActivityPage.tsx` and `src/components/TransactionDialog.tsx`: searchable ledger history and transaction/category entry.
+- `src/db/database.ts`: browser-native IndexedDB database, schema migration, and typed wallet/ledger/preference operations.
+- `src/domain/ledger.ts`: transaction invariants, balance deltas, ledger summaries, and history filters.
 - `src/domain/money.ts`: centavo parsing, PHP formatting, and safe aggregation.
-- `tests/money.test.ts`: focused tests using Node's built-in test runner.
+- `tests/ledger.test.ts` and `tests/money.test.ts`: financial invariant tests using Node's built-in test runner.
 - `src/index.css` and `src/App.css`: theme tokens, global styles, and responsive components.
 
 ## Local database
 
-Database: `mpkpb`, schema version `2`. Stores are created in IndexedDB's upgrade transaction. Version 2 adds wallet icon/color attributes and migrates existing wallet records with type-appropriate defaults:
+Database: `mpkpb`, schema version `3`. Stores and indexes are created in IndexedDB's upgrade transaction. Version 2 adds wallet icon/color attributes with a migration for v1 records. Version 3 indexes transaction dates and wallet references, and adds a unique category index while preserving existing wallet and preference records:
 
 | Store | Key path | Purpose |
 | --- | --- | --- |
 | wallets | `id` | User-created wallet records with type, icon, color, opening centavos, and archive/protection state |
-| transactions | `id` | Reserved for the future ledger |
-| categories | `id` | Reserved for customizable categories |
+| transactions | `id` | Posted income, expenses, transfers/fees, and balance adjustments |
+| categories | `id` | User-defined income and expense categories; unique per type/name |
 | budgets | `id` | Reserved for budget plans |
 | debts | `id` | Reserved for debt records |
 | scheduledEvents | `id` | Reserved for expected income and obligations |
 | snapshots | `id` | Reserved for local save history |
 | preferences | `key` | Theme and optional display name |
 
-Database access stays in `src/db`. Future schema changes must increment the database version and use IndexedDB's `onupgradeneeded` migration transaction. Archived wallets remain stored and counted in total balance; they are excluded from spendable funds until restored. Storage and migration errors must be visible to users; never silently substitute in-memory state for persisted financial data.
+Database access stays in `src/db`. Transaction writes validate the referenced wallet(s) and category and commit in one read-write IndexedDB transaction. Updating a wallet's opening balance is rejected after ledger activity; use a signed balance adjustment instead. Future schema changes must increment the database version and use IndexedDB's `onupgradeneeded` migration transaction. Archived wallets remain stored and included in total balance; they are excluded from spendable funds until restored.
+
+## Ledger rules
+
+Balances are derived as opening centavos plus posted transaction deltas. Income increases one wallet; expenses decrease one wallet; transfers debit the source by principal plus fee and credit the destination by principal; adjustments are signed deltas. Transfer principal is excluded from income/expense summaries, while its fee is an expense. Calculations reject invalid references and unsafe intermediate or aggregate values rather than displaying a fabricated balance. Expected income is stored separately in a later milestone and must not affect current balances.
 
 ## Calculation rules
 

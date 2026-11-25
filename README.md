@@ -2,7 +2,7 @@
 
 MPKPB? is a local-first personal finance application for Filipino users. It helps you track wallets and budgets, understand upcoming cash flow, and get a little Taglish encouragement — without an account or cloud database.
 
-The v0.1.0 foundation includes a responsive dashboard, first-run onboarding, wallet creation/editing/archiving, custom wallet names/icons/colors, protected funds, balance privacy, three themes, local IndexedDB persistence, and integer-centavo PHP utilities. Transactions, budgets, debts, forecasts, backup/restore, and PWA support are not implemented yet.
+The v0.2.0 foundation and ledger include responsive onboarding, customizable wallets, protected funds, themes and balance privacy, plus income, expenses, transfers with fees, manual balance adjustments, custom categories, searchable transaction history, and balances derived from the local ledger. Budgets, expected income, debts, forecasts, backup/restore, and PWA support are later milestones.
 
 ## Development
 
@@ -17,7 +17,7 @@ npm run typecheck
 npm run build
 ```
 
-MPKPB? stores wallet and preference data in this browser's IndexedDB. It has no application backend, account, analytics, or financial API; app code does not transmit financial data. Clearing site storage removes local records; backup and restore support is planned.
+MPKPB? stores wallets, transactions, categories, and preferences in this browser's IndexedDB. Posted transfers are neutral to income/expense totals; only their fees count as expenses. Future income is not treated as available money. The app has no backend, account, analytics, or financial API; financial data stays on this device. Clearing site storage removes local records; backup and restore are planned.
 
 ## Project documentation
 

@@ -22,14 +22,17 @@
 - [x] Validate wallet and preference persistence plus desktop/mobile behavior in a browser.
 - [x] Add dialog keyboard focus handling and responsive accessibility refinements.
 
-**v0.1.0 foundation complete.** Phase 2 has not started.
+**v0.1.0 foundation complete.**
 
 ## Phase 2 — Core financial ledger
 
-- [ ] Wallet reconciliation and transfers.
-- [ ] Income, expense, adjustment, and transaction history.
-- [ ] Custom categories and ledger-derived wallet balances.
-- [ ] Dashboard activity and financial calculation regressions.
+- [x] Wallet transfers with fees; income, expense, and signed balance adjustment transactions.
+- [x] Custom income/expense categories; transaction editing and confirmed deletion.
+- [x] Search, wallet/category/date/type filters, sorting, and transaction history.
+- [x] Ledger-derived wallet balances and atomic IndexedDB transaction writes.
+- [x] Backward-compatible schema migration and financial calculation regression tests.
+
+**v0.2.0 core ledger complete.** Expected income, budgets, debts, and forecasts remain future work.
 
 ## Phase 3 — Budgets and debts
 

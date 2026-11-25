@@ -1,3 +1,10 @@
+import {
+  isLedgerTransaction,
+  isTransactionCategory,
+  type LedgerTransaction,
+  type TransactionCategory,
+} from '../domain/ledger.ts'
+
 export type WalletType =
   | 'Cash'
   | 'E-wallet'
@@ -31,7 +38,7 @@ interface Preference {
 }
 
 const DATABASE_NAME = 'mpkpb'
-const DATABASE_VERSION = 2
+const DATABASE_VERSION = 3
 const STORE_NAMES = [
   'wallets',
   'transactions',
@@ -117,29 +124,46 @@ function openDatabase(): Promise<IDBDatabase> {
             keyPath: storeName === 'preferences' ? 'key' : 'id',
           })
         }
+      }
 
-        if (event.oldVersion < 2) {
-          const walletStore = request.transaction?.objectStore('wallets')
-          if (walletStore) {
-            const cursorRequest = walletStore.openCursor()
-            cursorRequest.onsuccess = () => {
-              const cursor = cursorRequest.result
-              if (!cursor) return
+      if (event.oldVersion < 2) {
+        const walletStore = request.transaction?.objectStore('wallets')
+        if (walletStore) {
+          const cursorRequest = walletStore.openCursor()
+          cursorRequest.onsuccess = () => {
+            const cursor = cursorRequest.result
+            if (!cursor) return
 
-              const storedWallet = cursor.value as Partial<Wallet>
-              const walletType = isWalletType(storedWallet.type) ? storedWallet.type : 'Other'
-              cursor.update({
-                ...storedWallet,
-                icon: isWalletIcon(storedWallet.icon)
-                  ? storedWallet.icon
-                  : defaultWalletIcon(walletType),
-                color: isWalletColor(storedWallet.color)
-                  ? storedWallet.color
-                  : defaultWalletColor(walletType),
-              })
-              cursor.continue()
-            }
+            const storedWallet = cursor.value as Partial<Wallet>
+            const walletType = isWalletType(storedWallet.type) ? storedWallet.type : 'Other'
+            cursor.update({
+              ...storedWallet,
+              icon: isWalletIcon(storedWallet.icon)
+                ? storedWallet.icon
+                : defaultWalletIcon(walletType),
+              color: isWalletColor(storedWallet.color)
+                ? storedWallet.color
+                : defaultWalletColor(walletType),
+            })
+            cursor.continue()
           }
+        }
+      }
+
+      if (event.newVersion !== null && event.newVersion >= 3) {
+        const transactions = request.transaction?.objectStore('transactions')
+        if (transactions && !transactions.indexNames.contains('byDate')) {
+          transactions.createIndex('byDate', 'occurredOn')
+        }
+        if (transactions && !transactions.indexNames.contains('byWallet')) {
+          transactions.createIndex('byWallet', 'walletId')
+        }
+        if (transactions && !transactions.indexNames.contains('byDestinationWallet')) {
+          transactions.createIndex('byDestinationWallet', 'toWalletId')
+        }
+        const categories = request.transaction?.objectStore('categories')
+        if (categories && !categories.indexNames.contains('byKindAndName')) {
+          categories.createIndex('byKindAndName', ['kind', 'normalizedName'], { unique: true })
         }
       }
     }
@@ -241,10 +265,46 @@ export async function updateWallet(wallet: Wallet): Promise<void> {
   }
 
   const database = await openDatabase()
-  const transaction = database.transaction('wallets', 'readwrite')
+  const transaction = database.transaction(['wallets', 'transactions'], 'readwrite')
   const completed = transactionComplete(transaction)
-  transaction.objectStore('wallets').put(wallet)
-  await completed
+  const wallets = transaction.objectStore('wallets')
+  const storedWalletRequest = wallets.get(wallet.id)
+  let validationError: Error | undefined
+  storedWalletRequest.onsuccess = () => {
+    const storedWallet = storedWalletRequest.result
+    if (!isWallet(storedWallet)) {
+      validationError = new Error('The saved wallet could not be verified. No changes were made.')
+      transaction.abort()
+      return
+    }
+    if (storedWallet.openingBalanceCentavos === wallet.openingBalanceCentavos) {
+      wallets.put(wallet)
+      return
+    }
+
+    const historyRequest = transaction.objectStore('transactions').getAll()
+    historyRequest.onsuccess = () => {
+      const history = historyRequest.result as unknown[]
+      if (!history.every(isLedgerTransaction)) {
+        validationError = new Error('Saved ledger data is invalid. No wallet balances were changed.')
+        transaction.abort()
+        return
+      }
+      if (history.some((entry) => entry.walletId === wallet.id || entry.toWalletId === wallet.id)) {
+        validationError = new Error('This wallet already has ledger activity. Use a balance adjustment instead of changing its opening balance.')
+        transaction.abort()
+        return
+      }
+      wallets.put(wallet)
+    }
+  }
+
+  try {
+    await completed
+  } catch (error) {
+    if (validationError) throw validationError
+    throw error
+  }
 }
 
 export async function archiveWallet(wallet: Wallet): Promise<Wallet> {
@@ -265,6 +325,121 @@ export async function restoreWallet(wallet: Wallet): Promise<Wallet> {
   }
   await updateWallet(restoredWallet)
   return restoredWallet
+}
+
+export async function getTransactions(): Promise<LedgerTransaction[]> {
+  const database = await openDatabase()
+  const transaction = database.transaction('transactions', 'readonly')
+  const completed = transactionComplete(transaction)
+  const [results] = await Promise.all([
+    requestResult<unknown[]>(transaction.objectStore('transactions').getAll()),
+    completed,
+  ] as const)
+  if (!results.every(isLedgerTransaction)) {
+    throw new Error('Some saved transaction data is invalid. No balances were changed.')
+  }
+  return results
+}
+
+export async function saveTransaction(entry: LedgerTransaction): Promise<void> {
+  if (!isLedgerTransaction(entry)) {
+    throw new Error('The transaction details are invalid. Please review the amount and wallets.')
+  }
+
+  const database = await openDatabase()
+  const storeNames = ['wallets', 'transactions']
+  if (entry.categoryId) storeNames.push('categories')
+  const transaction = database.transaction(storeNames, 'readwrite')
+  const completed = transactionComplete(transaction)
+  const transactions = transaction.objectStore('transactions')
+  const checks: {
+    request: IDBRequest<unknown>
+    isValid: (value: unknown) => boolean
+    message: string
+  }[] = [
+    {
+      request: transaction.objectStore('wallets').get(entry.walletId),
+      isValid: isWallet,
+      message: 'The selected wallet no longer exists.',
+    },
+  ]
+  if (entry.kind === 'transfer' && entry.toWalletId) {
+    checks.push({
+      request: transaction.objectStore('wallets').get(entry.toWalletId),
+      isValid: isWallet,
+      message: 'The destination wallet no longer exists.',
+    })
+  }
+  if (entry.categoryId) {
+    checks.push({
+      request: transaction.objectStore('categories').get(entry.categoryId),
+      isValid: (value) => isTransactionCategory(value) && value.kind === entry.kind,
+      message: 'The selected category is no longer available for this transaction type.',
+    })
+  }
+
+  let validationError: Error | undefined
+  let pendingChecks = checks.length
+  for (const check of checks) {
+    check.request.onsuccess = () => {
+      if (!check.isValid(check.request.result)) {
+        validationError = new Error(check.message)
+        transaction.abort()
+        return
+      }
+      pendingChecks -= 1
+      if (pendingChecks === 0) transactions.put(entry)
+    }
+  }
+
+  try {
+    await completed
+  } catch (error) {
+    if (validationError) throw validationError
+    throw error
+  }
+}
+
+export async function deleteTransaction(id: string): Promise<void> {
+  if (!id) throw new Error('A transaction ID is required.')
+  const database = await openDatabase()
+  const transaction = database.transaction('transactions', 'readwrite')
+  const completed = transactionComplete(transaction)
+  transaction.objectStore('transactions').delete(id)
+  await completed
+}
+
+export async function getCategories(): Promise<TransactionCategory[]> {
+  const database = await openDatabase()
+  const transaction = database.transaction('categories', 'readonly')
+  const completed = transactionComplete(transaction)
+  const [results] = await Promise.all([
+    requestResult<unknown[]>(transaction.objectStore('categories').getAll()),
+    completed,
+  ] as const)
+  if (!results.every(isTransactionCategory)) {
+    throw new Error('Some saved category data is invalid. No transactions were changed.')
+  }
+  return results
+}
+
+export async function addCategory(category: TransactionCategory): Promise<void> {
+  if (!isTransactionCategory(category)) {
+    throw new Error('The category details are invalid. Please check the category name.')
+  }
+
+  const database = await openDatabase()
+  const transaction = database.transaction('categories', 'readwrite')
+  const completed = transactionComplete(transaction)
+  transaction.objectStore('categories').add(category)
+  try {
+    await completed
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'ConstraintError') {
+      throw new Error('A category with this name already exists for that transaction type.')
+    }
+    throw error
+  }
 }
 
 export async function getPreference(key: string): Promise<string | undefined> {

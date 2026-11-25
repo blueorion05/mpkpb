@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
+  addCategory,
   archiveWallet,
   createWallet,
+  deleteTransaction,
   defaultWalletColor,
   defaultWalletIcon,
+  getCategories,
   getPreference,
+  getTransactions,
   getWallets,
   isWalletColor,
   isWalletIcon,
   isWalletType,
   restoreWallet,
+  saveTransaction,
   savePreference,
   updateWallet,
   WALLET_COLORS,
@@ -18,6 +23,15 @@ import {
   type WalletIcon,
   type Wallet,
 } from './db/database'
+import ActivityPage from './components/ActivityPage'
+import TransactionDialog from './components/TransactionDialog'
+import {
+  calculateLedgerTotals,
+  calculateWalletBalances,
+  normalizeCategoryName,
+  type LedgerTransaction,
+  type TransactionCategory,
+} from './domain/ledger'
 import { formatPHP, parsePesoToCentavos, sumCentavos } from './domain/money'
 import './App.css'
 
@@ -86,6 +100,8 @@ function keepFocusInside(event: KeyboardEvent, dialog: HTMLElement | null) {
 function App() {
   const [page, setPage] = useState<Page>('home')
   const [wallets, setWallets] = useState<Wallet[]>([])
+  const [transactions, setTransactions] = useState<LedgerTransaction[]>([])
+  const [categories, setCategories] = useState<TransactionCategory[]>([])
   const [theme, setTheme] = useState<Theme>('system')
   const [displayName, setDisplayName] = useState('')
   const [balanceVisible, setBalanceVisible] = useState(true)
@@ -96,21 +112,33 @@ function App() {
   const [isOnboarding, setIsOnboarding] = useState(false)
   const [editingWallet, setEditingWallet] = useState<Wallet | null>(null)
   const [walletToArchive, setWalletToArchive] = useState<Wallet | null>(null)
+  const [transactionDialogOpen, setTransactionDialogOpen] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<LedgerTransaction | null>(null)
+  const [transactionToDelete, setTransactionToDelete] = useState<LedgerTransaction | null>(null)
   const [formError, setFormError] = useState('')
   const [pageError, setPageError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const walletDialogRef = useRef<HTMLElement>(null)
   const archiveDialogRef = useRef<HTMLElement>(null)
+  const transactionDeleteDialogRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     let active = true
 
     async function load() {
       let savedWallets: Wallet[]
+      let savedTransactions: LedgerTransaction[]
+      let savedCategories: TransactionCategory[]
       try {
-        savedWallets = await getWallets()
+        [savedWallets, savedTransactions, savedCategories] = await Promise.all([
+          getWallets(),
+          getTransactions(),
+          getCategories(),
+        ])
         if (!active) return
         setWallets(savedWallets)
+        setTransactions(savedTransactions)
+        setCategories(savedCategories)
         setWalletLoadError(false)
       } catch (error) {
         if (active) {
@@ -186,21 +214,57 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [walletToArchive])
 
-  const totals = useMemo(() => {
-    if (walletLoadError) return null
+  useEffect(() => {
+    if (!transactionToDelete) return
+    function handleKeyDown(event: KeyboardEvent) {
+      keepFocusInside(event, transactionDeleteDialogRef.current)
+      if (event.key === 'Escape') setTransactionToDelete(null)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [transactionToDelete])
+
+  const ledger = useMemo(() => {
+    if (walletLoadError) return { balances: null, error: '' }
     try {
+      return { balances: calculateWalletBalances(wallets, transactions), error: '' }
+    } catch (error) {
       return {
-        all: sumCentavos(wallets.map((wallet) => wallet.openingBalanceCentavos)),
-        spendable: sumCentavos(
-          wallets
-            .filter((wallet) => !wallet.protected && !wallet.archived)
-            .map((wallet) => wallet.openingBalanceCentavos),
-        ),
+        balances: null,
+        error: error instanceof Error ? error.message : 'Wallet balances could not be calculated.',
+      }
+    }
+  }, [wallets, transactions, walletLoadError])
+
+  const totals = useMemo(() => {
+    if (!ledger.balances) return null
+    try {
+      const spendableBalances = wallets
+        .filter((wallet) => !wallet.protected && !wallet.archived)
+        .map((wallet) => {
+          const balance = ledger.balances?.get(wallet.id)
+          if (balance === undefined) {
+            throw new Error('A wallet balance is missing from the ledger calculation.')
+          }
+          return balance
+        })
+      return {
+        all: sumCentavos([...ledger.balances.values()]),
+        spendable: sumCentavos(spendableBalances),
       }
     } catch {
       return null
     }
-  }, [wallets, walletLoadError])
+  }, [ledger.balances, wallets])
+
+  const activitySummary = useMemo(() => {
+    if (walletLoadError) return null
+    try {
+      return calculateLedgerTotals(transactions)
+    } catch {
+      return null
+    }
+  }, [transactions, walletLoadError])
 
   async function changeTheme(nextTheme: Theme) {
     setTheme(nextTheme)
@@ -326,9 +390,74 @@ function App() {
     }
   }
 
+  function openTransactionDialog() {
+    setEditingTransaction(null)
+    setTransactionDialogOpen(true)
+  }
+
+  function openEditTransaction(transaction: LedgerTransaction) {
+    setEditingTransaction(transaction)
+    setTransactionDialogOpen(true)
+  }
+
+  async function handleSaveTransaction(transaction: LedgerTransaction) {
+    await saveTransaction(transaction)
+    setTransactions((current) => {
+      const exists = current.some((item) => item.id === transaction.id)
+      return exists
+        ? current.map((item) => item.id === transaction.id ? transaction : item)
+        : [...current, transaction]
+    })
+    setSuccessMessage(
+      `${transaction.description} ${editingTransaction ? 'updated' : 'saved'} on this device.`,
+    )
+    setTransactionDialogOpen(false)
+    setEditingTransaction(null)
+  }
+
+  async function handleCreateCategory(name: string, kind: 'income' | 'expense') {
+    const trimmedName = name.trim()
+    if (!trimmedName || trimmedName.length > 40) {
+      throw new Error('Category names must contain 1–40 characters.')
+    }
+    const normalizedName = normalizeCategoryName(trimmedName)
+    if (categories.some((category) => category.kind === kind && category.normalizedName === normalizedName)) {
+      throw new Error('A category with this name already exists for that transaction type.')
+    }
+    const now = new Date().toISOString()
+    const category: TransactionCategory = {
+      id: crypto.randomUUID(),
+      name: trimmedName,
+      kind,
+      normalizedName,
+      createdAt: now,
+      updatedAt: now,
+    }
+    await addCategory(category)
+    setCategories((current) => [...current, category])
+    return category
+  }
+
+  async function confirmDeleteTransaction() {
+    if (!transactionToDelete) return
+    try {
+      await deleteTransaction(transactionToDelete.id)
+      setTransactions((current) => current.filter((item) => item.id !== transactionToDelete.id))
+      setSuccessMessage(`${transactionToDelete.description} removed from your ledger.`)
+      setTransactionToDelete(null)
+    } catch (error) {
+      setPageError(error instanceof Error ? error.message : 'The transaction could not be deleted.')
+    }
+  }
+
   const currentLabel = pages.find((item) => item.id === page)?.label ?? 'Home'
   const activeWallets = wallets.filter((wallet) => !wallet.archived)
   const archivedWallets = wallets.filter((wallet) => wallet.archived)
+  const financialDataError = ledger.error || (
+    !loading && !walletLoadError && !totals
+      ? 'Combined wallet balances exceed the safe integer range; no total is shown.'
+      : ''
+  )
 
   return (
     <div className="app-shell">
@@ -403,6 +532,11 @@ function App() {
               <button type="button" className="text-button" onClick={() => setPageError('')}>Dismiss</button>
             </div>
           )}
+          {financialDataError && !walletLoadError && (
+            <div className="error-banner" role="alert">
+              <span>{financialDataError}</span>
+            </div>
+          )}
           {successMessage && (
             <div className="success-banner" role="status">
               <span>{successMessage}</span>
@@ -414,6 +548,7 @@ function App() {
               displayName={displayName}
               wallets={activeWallets}
               totals={totals}
+              balances={ledger.balances}
               visible={balanceVisible}
               loading={loading}
               dataUnavailable={walletLoadError}
@@ -426,6 +561,7 @@ function App() {
               wallets={activeWallets}
               archivedWallets={archivedWallets}
               totals={totals}
+              balances={ledger.balances}
               visible={balanceVisible}
               loading={loading}
               dataUnavailable={walletLoadError}
@@ -436,7 +572,18 @@ function App() {
             />
           )}
           {page === 'activity' && (
-            <ComingSoon title="Activity" detail="Income, expenses, and transfers belong in one clear ledger. That is the next build phase." />
+            <ActivityPage
+              wallets={wallets}
+              transactions={transactions}
+              categories={categories}
+              summary={activitySummary}
+              loading={loading}
+              dataUnavailable={walletLoadError}
+              canAdd={activeWallets.length > 0}
+              onAdd={openTransactionDialog}
+              onEdit={openEditTransaction}
+              onDelete={setTransactionToDelete}
+            />
           )}
           {page === 'plans' && (
             <ComingSoon title="Budget plans" detail="Build a plan around your real life — not a spreadsheet that makes you cry." />
@@ -506,8 +653,20 @@ function App() {
                   <span>Starting balance</span>
                   <span className="currency-input">
                     <b>₱</b>
-                    <input name="openingBalance" inputMode="decimal" defaultValue={editingWallet ? centavosInput(editingWallet.openingBalanceCentavos) : '0.00'} required aria-label="Starting balance in pesos" />
+                    <input
+                      name="openingBalance"
+                      inputMode="decimal"
+                      defaultValue={editingWallet ? centavosInput(editingWallet.openingBalanceCentavos) : '0.00'}
+                      readOnly={Boolean(editingWallet && transactions.some((transaction) =>
+                        transaction.walletId === editingWallet.id || transaction.toWalletId === editingWallet.id,
+                      ))}
+                      required
+                      aria-label="Starting balance in pesos"
+                    />
                   </span>
+                  {editingWallet && transactions.some((transaction) =>
+                    transaction.walletId === editingWallet.id || transaction.toWalletId === editingWallet.id,
+                  ) && <small className="field-note">Use a balance adjustment to correct the balance after ledger activity.</small>}
                 </label>
                 <label className="field">
                   <span>Wallet color</span>
@@ -517,7 +676,7 @@ function App() {
                 </label>
               </div>
               <label className="checkbox-field">
-                <input type="checkbox" name="protected" />
+                <input type="checkbox" name="protected" defaultChecked={editingWallet?.protected ?? false} />
                 <span><strong>Protect this money</strong><small>Exclude it from spendable funds.</small></span>
               </label>
               {formError && <p className="form-error" role="alert">{formError}</p>}
@@ -527,6 +686,43 @@ function App() {
               </div>
               <p className="form-privacy">⌑ Saved on this device only.</p>
             </form>
+          </section>
+        </div>
+      )}
+      {transactionDialogOpen && (
+        <TransactionDialog
+          wallets={wallets}
+          categories={categories}
+          editingTransaction={editingTransaction}
+          onClose={() => {
+            setTransactionDialogOpen(false)
+            setEditingTransaction(null)
+          }}
+          onSave={handleSaveTransaction}
+          onCreateCategory={handleCreateCategory}
+        />
+      )}
+      {transactionToDelete && (
+        <div className="dialog-backdrop" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setTransactionToDelete(null)
+        }}>
+          <section
+            ref={transactionDeleteDialogRef}
+            className="wallet-dialog confirm-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-transaction-title"
+            aria-describedby="delete-transaction-description"
+          >
+            <span className="eyebrow">LEDGER CHANGE</span>
+            <h2 id="delete-transaction-title">Delete this transaction?</h2>
+            <p id="delete-transaction-description">
+              {transactionToDelete.description} will be removed. Wallet balances will be recalculated from the remaining history.
+            </p>
+            <div className="dialog-actions">
+              <button className="button button-quiet" type="button" autoFocus onClick={() => setTransactionToDelete(null)}>Keep transaction</button>
+              <button className="button button-danger" type="button" onClick={() => void confirmDeleteTransaction()}>Delete transaction</button>
+            </div>
           </section>
         </div>
       )}
@@ -553,6 +749,7 @@ function Dashboard({
   displayName,
   wallets,
   totals,
+  balances,
   visible,
   loading,
   dataUnavailable,
@@ -562,6 +759,7 @@ function Dashboard({
   displayName: string
   wallets: Wallet[]
   totals: { all: number; spendable: number } | null
+  balances: ReadonlyMap<string, number> | null
   visible: boolean
   loading: boolean
   dataUnavailable: boolean
@@ -582,7 +780,7 @@ function Dashboard({
       </div>
       <section className="balance-grid" aria-label="Balance overview">
         <article className="balance-card primary-card">
-          <div className="card-label-row"><span className="metric-label">TOTAL STARTING BALANCE</span><span className="card-icon">▣</span></div>
+          <div className="card-label-row"><span className="metric-label">TOTAL BALANCE</span><span className="card-icon">▣</span></div>
           <strong className="balance-amount">{loading ? '…' : totals ? visible ? formatPHP(totals.all) : '₱ ••••••' : '—'}</strong>
           <span className="metric-caption">Across all wallets <span className="actual-badge">ACTUAL</span></span>
         </article>
@@ -597,8 +795,6 @@ function Dashboard({
           <span className="metric-caption">Places where your pera lives</span>
         </article>
       </section>
-
-      {!totals && !loading && !dataUnavailable && <div className="error-banner" role="alert">A saved wallet amount exceeds the safe calculation range. No total is shown.</div>}
 
       <div className="dashboard-grid">
         <section className="panel wallet-panel">
@@ -618,7 +814,7 @@ function Dashboard({
             </div>
           ) : (
             <div className="wallet-list">
-              {wallets.slice(0, 4).map((wallet) => <WalletRow key={wallet.id} wallet={wallet} visible={visible} />)}
+              {wallets.slice(0, 4).map((wallet) => <WalletRow key={wallet.id} wallet={wallet} balanceCentavos={balances?.get(wallet.id)} visible={visible} />)}
             </div>
           )}
         </section>
@@ -627,7 +823,7 @@ function Dashboard({
           <span className="eyebrow">GENG GENG SAYS</span>
           <h2>{wallets.length ? 'Good start. Now let’s track the plot.' : 'No judgment. We all start somewhere.'}</h2>
           <p>{wallets.length
-            ? 'Wallets are saved on this device. Transaction tracking and forecasts are up next.'
+            ? 'Your ledger is taking shape, one peso at a time.'
             : 'Your financial glow-up starts with one wallet. Add what you have — kahit pang-meryenda lang.'}</p>
           <div className="insight-footer"><span className="status-dot" /> Private by design</div>
         </aside>
@@ -640,12 +836,14 @@ function Dashboard({
 
 function WalletRow({
   wallet,
+  balanceCentavos,
   visible,
   onEdit,
   onArchive,
   onRestore,
 }: {
   wallet: Wallet
+  balanceCentavos?: number
   visible: boolean
   onEdit?: (wallet: Wallet) => void
   onArchive?: (wallet: Wallet) => void
@@ -655,7 +853,7 @@ function WalletRow({
     <div className="wallet-row">
       <span className={`wallet-avatar wallet-color-${wallet.color}`} aria-hidden="true">{iconGlyphs[wallet.icon]}</span>
       <span className="wallet-info"><strong>{wallet.name}</strong><small>{wallet.type}{wallet.protected ? ' · Protected' : ''}</small></span>
-      <strong className="wallet-amount">{visible ? formatPHP(wallet.openingBalanceCentavos) : '₱ ••••••'}</strong>
+      <strong className="wallet-amount">{visible ? balanceCentavos === undefined ? '—' : formatPHP(balanceCentavos) : '₱ ••••••'}</strong>
       {(onEdit || onArchive || onRestore) ? (
         <div className="wallet-actions">
           {onEdit && <button className="wallet-action" type="button" onClick={() => onEdit(wallet)} aria-label={`Edit ${wallet.name}`}>Edit</button>}
@@ -671,6 +869,7 @@ function WalletsPage({
   wallets,
   archivedWallets,
   totals,
+  balances,
   visible,
   loading,
   dataUnavailable,
@@ -682,6 +881,7 @@ function WalletsPage({
   wallets: Wallet[]
   archivedWallets: Wallet[]
   totals: { all: number; spendable: number } | null
+  balances: ReadonlyMap<string, number> | null
   visible: boolean
   loading: boolean
   dataUnavailable: boolean
@@ -708,14 +908,14 @@ function WalletsPage({
           <>
             {wallets.length > 0 ? (
               <div className="wallet-list">
-                {wallets.map((wallet) => <WalletRow key={wallet.id} wallet={wallet} visible={visible} onEdit={onEdit} onArchive={onArchive} />)}
+                {wallets.map((wallet) => <WalletRow key={wallet.id} wallet={wallet} balanceCentavos={balances?.get(wallet.id)} visible={visible} onEdit={onEdit} onArchive={onArchive} />)}
               </div>
             ) : !loading && <div className="empty-active-wallets"><p>No active wallets. Your archived balances remain in the total.</p><button className="button button-outline" type="button" onClick={onAdd}>＋ Add wallet</button></div>}
             {archivedWallets.length > 0 && (
               <section className="archived-wallets" aria-labelledby="archived-wallets-title">
                 <h2 id="archived-wallets-title">Archived wallets</h2>
                 <div className="wallet-list">
-                  {archivedWallets.map((wallet) => <WalletRow key={wallet.id} wallet={wallet} visible={visible} onRestore={onRestore} />)}
+                  {archivedWallets.map((wallet) => <WalletRow key={wallet.id} wallet={wallet} balanceCentavos={balances?.get(wallet.id)} visible={visible} onRestore={onRestore} />)}
                 </div>
               </section>
             )}
