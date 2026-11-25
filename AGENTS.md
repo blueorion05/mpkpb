@@ -10,3 +10,4 @@
 - Support keyboard access, visible focus, responsive layouts, and reduced-motion preferences.
 - Run relevant tests, lint, type checks, and builds when available. Report checks that could not be run.
 - Keep product and architecture docs current; see `docs/PRODUCT_SPEC.md` and `docs/ROADMAP.md`.
+- Update docs/PROGRESS.md with completed checks and remaining release work before handing off.

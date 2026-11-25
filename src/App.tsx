@@ -1,3 +1,5 @@
+import DataSafety from './components/DataSafety'
+import { PrivacyGate, PrivacySettings } from './components/PrivacyLock'
 import { GENG_EXPRESSION, getGengMessage, type GengContext } from './domain/humor'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
@@ -784,7 +786,7 @@ function App() {
         </header>
 
         <main className="page-content" id="main-content" tabIndex={-1}>
-          {!loading && !walletLoadError && !planningLoadError && humorEnabled && page !== 'more' && (
+          {!loading && !walletLoadError && !planningLoadError && humorEnabled && page !== 'more' && page !== 'home' && (
             <p className="geng-note"><span aria-hidden="true">{GENG_EXPRESSION}</span> {getGengMessage(pageContext[page], { humorEnabled, profanityEnabled })}</p>
           )}
           {pageError && (
@@ -816,6 +818,8 @@ function App() {
           {page === 'home' && (
             <Dashboard
               displayName={displayName}
+              gengMessage={humorEnabled && !loading && !walletLoadError
+                ? getGengMessage(walletContext, { humorEnabled, profanityEnabled }) : undefined}
               wallets={activeWallets}
               totals={totals}
               balances={ledger.balances}
@@ -920,6 +924,7 @@ function App() {
               onThemeChange={(next) => void changeTheme(next)}
             />
           )}
+          {page === 'more' && !loading && <><DataSafety /><PrivacySettings /></>}
         </main>
       </div>
 
@@ -1083,6 +1088,7 @@ function App() {
 
 function Dashboard({
   displayName,
+  gengMessage,
   wallets,
   totals,
   balances,
@@ -1092,6 +1098,7 @@ function Dashboard({
   onAddWallet,
   onViewWallets,
 }: {
+  gengMessage?: string
   displayName: string
   wallets: Wallet[]
   totals: { all: number; spendable: number } | null
@@ -1155,17 +1162,13 @@ function Dashboard({
           )}
         </section>
         <aside className="panel insight-panel">
-          <span className="insight-icon" aria-hidden="true">✦</span>
-          <span className="eyebrow">GENG SAYS</span>
-          <h2>{wallets.length ? 'Good start. Now let’s track the plot.' : 'No judgment. We all start somewhere.'}</h2>
-          <p>{wallets.length
-            ? 'Your ledger is taking shape, one peso at a time.'
-            : 'Your financial glow-up starts with one wallet. Add what you have — kahit pang-meryenda lang.'}</p>
-          <div className="insight-footer"><span className="status-dot" /> Private by design</div>
+          <span className="insight-icon" aria-hidden="true">{gengMessage ? GENG_EXPRESSION : '✦'}</span>
+          <h2>{gengMessage ? 'Geng says' : 'Getting started'}</h2>
+          <p>{gengMessage ?? (wallets.length ? 'Record transactions to keep your balances up to date.' : 'Add a wallet to begin tracking your money.')}</p>
         </aside>
       </div>
 
-      <div className="privacy-note"><span aria-hidden="true">⌑</span><p><strong>Local-first, for real.</strong> Data stays in this browser on this device. Clearing browser storage removes it; backup tools are planned.</p></div>
+      <div className="privacy-note"><span aria-hidden="true">⌑</span><p><strong>Local-first, for real.</strong> Data stays in this browser on this device. Clearing browser storage removes it. Download a backup from More.</p></div>
     </>
   )
 }
@@ -1262,4 +1265,4 @@ function WalletsPage({
   )
 }
 
-export default App
+export default function PrivateApp() { return <PrivacyGate><App /></PrivacyGate> }

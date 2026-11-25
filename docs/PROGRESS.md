@@ -30,3 +30,5 @@ Next: proceed to v0.7.0 Geng Geng personality and UI/UX. Preserve all wallet, le
 
 - v0.6.0 baseline verified locally with 32 tests, lint, type checking, and a Vite build.
 - v0.7 development integrates 105 contextual lines with local humor and profanity settings. Browser QA remains pending.
+- v0.8 recovery verified in a disposable 375px Edge profile. Onboarding, autosave, manual snapshot, JSON replacement, safety-snapshot restoration, and incorrect/correct PIN entry passed. Schema remains at v5.
+- Validation tests reject duplicate IDs, missing wallet references, and orphaned planned receipts.

@@ -1,3 +1,4 @@
+import { calculateWalletBalances, calculateLedgerTotals } from '../domain/ledger.ts'
 import {
   isLedgerTransaction,
   isTransactionCategory,
@@ -302,7 +303,7 @@ export async function createWallet(wallet: Wallet, displayName?: string): Promis
   }
 
   const database = await openDatabase()
-  const transaction = database.transaction(['wallets', 'preferences'], 'readwrite')
+  const transaction = writeTransaction(database, ['wallets', 'preferences'])
   const completed = transactionComplete(transaction)
   transaction.objectStore('wallets').add(wallet)
   transaction.objectStore('preferences').put({ key: 'onboardingComplete', value: 'true' } satisfies Preference)
@@ -318,7 +319,7 @@ export async function updateWallet(wallet: Wallet): Promise<void> {
   }
 
   const database = await openDatabase()
-  const transaction = database.transaction(['wallets', 'transactions'], 'readwrite')
+  const transaction = writeTransaction(database, ['wallets', 'transactions'])
   const completed = transactionComplete(transaction)
   const wallets = transaction.objectStore('wallets')
   const storedWalletRequest = wallets.get(wallet.id)
@@ -409,7 +410,7 @@ export async function saveTransaction(entry: LedgerTransaction): Promise<Updated
   const database = await openDatabase()
   const storeNames = ['wallets', 'transactions', 'scheduledEvents', 'debts']
   if (entry.categoryId) storeNames.push('categories')
-  const transaction = database.transaction(storeNames, 'readwrite')
+  const transaction = writeTransaction(database, storeNames)
   const completed = transactionComplete(transaction)
   const transactions = transaction.objectStore('transactions')
   const scheduledEvents = transaction.objectStore('scheduledEvents')
@@ -633,7 +634,7 @@ export async function saveTransaction(entry: LedgerTransaction): Promise<Updated
 export async function deleteTransaction(id: string): Promise<UpdatedScheduledEvent> {
   if (!id) throw new Error('A transaction ID is required.')
   const database = await openDatabase()
-  const transaction = database.transaction(['transactions', 'scheduledEvents', 'debts'], 'readwrite')
+  const transaction = writeTransaction(database, ['transactions', 'scheduledEvents', 'debts'])
   const completed = transactionComplete(transaction)
   const transactions = transaction.objectStore('transactions')
   const scheduledEvents = transaction.objectStore('scheduledEvents')
@@ -771,7 +772,7 @@ export async function addCategory(category: TransactionCategory): Promise<void> 
   }
 
   const database = await openDatabase()
-  const transaction = database.transaction('categories', 'readwrite')
+  const transaction = writeTransaction(database, 'categories')
   const completed = transactionComplete(transaction)
   transaction.objectStore('categories').add(category)
   try {
@@ -793,6 +794,10 @@ export async function getBudgetPlans(): Promise<BudgetPlan[]> {
     requestResult<unknown[]>(transaction.objectStore('categories').getAll()),
     completed,
   ] as const)
+  return validateBudgetPlans(results, categoryRecords)
+}
+
+function validateBudgetPlans(results: unknown[], categoryRecords: unknown[]) {
   if (!results.every(isBudgetPlan)) {
     throw new Error('Some saved budget data is invalid. No plan was changed.')
   }
@@ -813,7 +818,7 @@ export async function saveBudgetPlan(plan: BudgetPlan): Promise<void> {
     throw new Error('The budget details are invalid. Review the plan name, dates, and category limits.')
   }
   const database = await openDatabase()
-  const transaction = database.transaction(['budgets', 'categories'], 'readwrite')
+  const transaction = writeTransaction(database, ['budgets', 'categories'])
   const completed = transactionComplete(transaction)
   const categoriesRequest = transaction.objectStore('categories').getAll()
   let validationError: Error | undefined
@@ -861,6 +866,10 @@ export async function getExpectedIncomes(): Promise<ExpectedIncome[]> {
     requestResult<unknown[]>(transaction.objectStore('categories').getAll()),
     completed,
   ] as const)
+  return validateExpectedIncomes(records, transactionRecords, walletRecords, categoryRecords)
+}
+
+function validateExpectedIncomes(records: unknown[], transactionRecords: unknown[], walletRecords: unknown[], categoryRecords: unknown[]) {
   if (!records.every(isExpectedIncome)) {
     throw new Error('Some saved expected-income data is invalid. No schedules were changed.')
   }
@@ -913,10 +922,7 @@ export async function saveExpectedIncome(expected: ExpectedIncome): Promise<void
     throw new Error('The expected-income details are invalid. Review the amount, due date, and recurrence.')
   }
   const database = await openDatabase()
-  const transaction = database.transaction(
-    ['scheduledEvents', 'transactions', 'wallets', 'categories'],
-    'readwrite',
-  )
+  const transaction = writeTransaction(database, ['scheduledEvents', 'transactions', 'wallets', 'categories'])
   const completed = transactionComplete(transaction)
   const events = transaction.objectStore('scheduledEvents')
   const previousRequest = events.get(expected.id)
@@ -1036,6 +1042,10 @@ export async function getDebts(): Promise<DebtRecord[]> {
     requestResult<unknown[]>(transaction.objectStore('categories').getAll()),
     completed,
   ] as const)
+  return validateDebts(records, transactionRecords, walletRecords, categoryRecords)
+}
+
+function validateDebts(records: unknown[], transactionRecords: unknown[], walletRecords: unknown[], categoryRecords: unknown[]) {
   if (!records.every(isDebtRecord)) {
     throw new Error('Some saved debt data is invalid. No settlement progress was calculated.')
   }
@@ -1098,10 +1108,7 @@ export async function saveDebt(debt: DebtRecord): Promise<void> {
     throw new Error('The debt details are invalid. Review the amount, due date, and installment schedule.')
   }
   const database = await openDatabase()
-  const transaction = database.transaction(
-    ['debts', 'transactions', 'wallets', 'categories'],
-    'readwrite',
-  )
+  const transaction = writeTransaction(database, ['debts', 'transactions', 'wallets', 'categories'])
   const completed = transactionComplete(transaction)
   const debts = transaction.objectStore('debts')
   const previousRequest = debts.get(debt.id)
@@ -1263,6 +1270,10 @@ export async function getObligations(): Promise<FinancialObligation[]> {
     requestResult<unknown[]>(transaction.objectStore('categories').getAll()),
     completed,
   ] as const)
+  return validateObligations(records, transactionRecords, walletRecords, categoryRecords)
+}
+
+function validateObligations(records: unknown[], transactionRecords: unknown[], walletRecords: unknown[], categoryRecords: unknown[]) {
   if (!records.every(isFinancialObligation)) {
     throw new Error('Some saved bill data is invalid. No payment progress was calculated.')
   }
@@ -1309,10 +1320,7 @@ export async function saveObligation(obligation: FinancialObligation): Promise<v
     throw new Error('The bill details are invalid. Review the amount, due date, and recurrence.')
   }
   const database = await openDatabase()
-  const transaction = database.transaction(
-    ['scheduledEvents', 'transactions', 'wallets', 'categories'],
-    'readwrite',
-  )
+  const transaction = writeTransaction(database, ['scheduledEvents', 'transactions', 'wallets', 'categories'])
   const completed = transactionComplete(transaction)
   const events = transaction.objectStore('scheduledEvents')
   const previousRequest = events.get(obligation.id)
@@ -1444,8 +1452,154 @@ export async function getPreference(key: string): Promise<string | undefined> {
 
 export async function savePreference(key: string, value: string): Promise<void> {
   const database = await openDatabase()
-  const transaction = database.transaction('preferences', 'readwrite')
+  const transaction = writeTransaction(database, 'preferences')
   const completed = transactionComplete(transaction)
   transaction.objectStore('preferences').put({ key, value } satisfies Preference)
   await completed
+}
+
+function writeTransaction(database: IDBDatabase, stores: string | string[]): IDBTransaction {
+  const transaction = database.transaction([...new Set([stores].flat().concat('preferences'))], 'readwrite')
+  const timestamp = new Date().toISOString()
+  transaction.objectStore('preferences').put({ key: 'lastSavedAt', value: timestamp })
+  transaction.addEventListener('complete', () => window.dispatchEvent(new CustomEvent('mpkpb-saved', { detail: timestamp })))
+  return transaction
+}
+
+const backupStores = ['wallets', 'transactions', 'categories', 'budgets', 'debts', 'scheduledEvents', 'preferences'] as const
+type BackupStore = (typeof backupStores)[number]
+
+export interface LocalBackup {
+  format: 'mpkpb'
+  version: 1
+  createdAt: string
+  records: Record<BackupStore, unknown[]>
+}
+
+interface Snapshot {
+  id: string
+  label: string
+  backup: LocalBackup
+}
+
+function isPreference(value: unknown): value is Preference {
+  return typeof value === 'object' && value !== null && 'key' in value &&
+    typeof value.key === 'string' && value.key.length > 0 &&
+    'value' in value && typeof value.value === 'string'
+}
+
+export function validateBackup(value: unknown): LocalBackup {
+  if (typeof value !== 'object' || value === null || !('format' in value) || value.format !== 'mpkpb' ||
+    !('version' in value) || value.version !== 1 || !('createdAt' in value) ||
+    typeof value.createdAt !== 'string' || !Number.isFinite(Date.parse(value.createdAt)) ||
+    !('records' in value) || typeof value.records !== 'object' || value.records === null) {
+    throw new Error('Choose a supported MPKPB backup file.')
+  }
+  const backup = value as LocalBackup
+  const { wallets, transactions, categories, budgets, debts, scheduledEvents, preferences } = backup.records
+  for (const store of backupStores) {
+    const rows = backup.records[store]
+    if (!Array.isArray(rows)) throw new Error('The backup is missing a required record list.')
+    const key = store === 'preferences' ? 'key' : 'id'
+    const ids = rows.map((row) => typeof row === 'object' && row !== null ? Reflect.get(row, key) : undefined)
+    if (ids.some((id) => typeof id !== 'string' || !id) || new Set(ids).size !== rows.length) {
+      throw new Error('The backup contains invalid or duplicate record IDs.')
+    }
+  }
+  if (!wallets.every(isWallet) || !transactions.every(isLedgerTransaction) ||
+    !categories.every(isTransactionCategory) || !preferences.every(isPreference)) {
+    throw new Error('The backup contains invalid wallet, transaction, category, or preference data.')
+  }
+  if (new Set(categories.map((category) => JSON.stringify([category.kind, category.normalizedName]))).size !== categories.length) {
+    throw new Error('The backup contains duplicate category names.')
+  }
+  const categoryById = new Map(categories.map((category) => [category.id, category]))
+  for (const entry of transactions) {
+    if ('categoryId' in entry && entry.categoryId &&
+      categoryById.get(entry.categoryId)?.kind !== entry.kind) {
+      throw new Error('A transaction references a missing or incompatible category.')
+    }
+  }
+  calculateWalletBalances(wallets, transactions)
+  calculateLedgerTotals(transactions)
+  validateBudgetPlans(budgets, categories)
+  const income = scheduledEvents.filter(isExpectedIncome)
+  const bills = scheduledEvents.filter(isFinancialObligation)
+  if (income.length + bills.length !== scheduledEvents.length) {
+    throw new Error('The backup contains an invalid scheduled event.')
+  }
+  validateExpectedIncomes(income, transactions, wallets, categories)
+  validateDebts(debts, transactions, wallets, categories)
+  validateObligations(bills, transactions, wallets, categories)
+  return backup
+}
+
+async function readBackup(transaction: IDBTransaction): Promise<LocalBackup> {
+  const entries = await Promise.all(backupStores.map(async (store) => [
+    store, await requestResult<unknown[]>(transaction.objectStore(store).getAll()),
+  ] as const))
+  const records = Object.fromEntries(entries) as LocalBackup['records']
+  // Security state belongs to this browser, independently of financial recovery.
+  records.preferences = records.preferences.filter((record) => !isPreference(record) || record.key !== 'privacyPin')
+  return { format: 'mpkpb', version: 1, createdAt: new Date().toISOString(), records }
+}
+
+export async function exportBackup(): Promise<LocalBackup> {
+  const database = await openDatabase()
+  const transaction = database.transaction(backupStores, 'readonly')
+  const [backup] = await Promise.all([readBackup(transaction), transactionComplete(transaction)])
+  return validateBackup(backup)
+}
+
+export async function listSnapshots(): Promise<Snapshot[]> {
+  const database = await openDatabase()
+  const transaction = database.transaction('snapshots', 'readonly')
+  const [snapshots] = await Promise.all([
+    requestResult<Snapshot[]>(transaction.objectStore('snapshots').getAll()),
+    transactionComplete(transaction),
+  ])
+  return snapshots.sort((a, b) => b.backup.createdAt.localeCompare(a.backup.createdAt))
+}
+
+export async function createSnapshot(): Promise<void> {
+  const backup = await exportBackup()
+  const database = await openDatabase()
+  const transaction = database.transaction('snapshots', 'readwrite')
+  const completed = transactionComplete(transaction)
+  transaction.objectStore('snapshots').add({ id: crypto.randomUUID(), label: 'Manual snapshot', backup } satisfies Snapshot)
+  await completed
+}
+
+export async function replaceFromBackup(candidate: LocalBackup, reset = false): Promise<void> {
+  const backup = validateBackup(candidate)
+  const database = await openDatabase()
+  const transaction = database.transaction(STORE_NAMES, 'readwrite')
+  const completed = transactionComplete(transaction)
+  const operation = async () => {
+    const previous = await readBackup(transaction)
+    const preferences = transaction.objectStore('preferences')
+    const pin = await requestResult<unknown>(preferences.get('privacyPin'))
+    if (reset) transaction.objectStore('snapshots').clear()
+    else transaction.objectStore('snapshots').add({
+      id: crypto.randomUUID(), label: 'Before restore', backup: previous,
+    } satisfies Snapshot)
+    for (const store of backupStores) {
+      const target = transaction.objectStore(store)
+      target.clear()
+      for (const record of backup.records[store]) {
+        if (store !== 'preferences' || !isPreference(record) || record.key !== 'privacyPin') target.add(record)
+      }
+    }
+    if (!reset && pin !== undefined) preferences.put(pin)
+    preferences.put({ key: 'lastSavedAt', value: new Date().toISOString() })
+  }
+  await Promise.all([operation().catch((error: unknown) => {
+    try { transaction.abort() } catch { /* Already aborted by IndexedDB. */ }
+    throw error
+  }), completed])
+}
+
+export function resetLocalData(): Promise<void> {
+  const records = Object.fromEntries(backupStores.map((store) => [store, [] as unknown[]])) as LocalBackup['records']
+  return replaceFromBackup({ format: 'mpkpb', version: 1, createdAt: new Date().toISOString(), records }, true)
 }
