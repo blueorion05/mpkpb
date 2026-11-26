@@ -1,9 +1,13 @@
+import { defaultForecastPreferences, readForecastPreferences, type ForecastPreferences } from './domain/forecastPreferences'
+import { SlidersHorizontal } from 'lucide-react'
+import AdjustBalance from './components/AdjustBalance'
+import { outstandingObligations } from './domain/debts'
 import { CircleAlert, CircleCheck, Activity, ChartNoAxesCombined, ClipboardList, ChevronRight, Ellipsis, Eye, EyeOff, House, LockKeyhole, Monitor, Moon, Plus, ShieldCheck, Sun, Wallet as WalletIconGlyph, X, type LucideIcon } from 'lucide-react'
 import Mascot from './components/Mascot'
 import { WalletIconPicker, WalletSymbol } from './components/IconPicker'
 import type { CategoryIcon } from './domain/categoryIcons'
 import UpcomingList from './components/UpcomingList'
-import type { ScheduledRecord } from './domain/entry'
+import type { EntryKind, ScheduledRecord } from './domain/entry'
 import { calculateForecast } from './domain/forecast'
 import { localSessionChannel } from './localSession'
 import OfflineStatus from './components/OfflineStatus'
@@ -129,6 +133,7 @@ function App() {
   const [expectedIncomes, setExpectedIncomes] = useState<ExpectedIncome[]>([])
   const [debts, setDebts] = useState<DebtRecord[]>([])
   const [obligations, setObligations] = useState<FinancialObligation[]>([])
+  const [forecastPreferences, setForecastPreferences] = useState(defaultForecastPreferences)
   const [forecastSafetyBufferCentavos, setForecastSafetyBufferCentavos] = useState(0)
   const [humorEnabled, setHumorEnabled] = useState(true)
   const [profanityEnabled, setProfanityEnabled] = useState(false)
@@ -143,6 +148,8 @@ function App() {
   const [isOnboarding, setIsOnboarding] = useState(false)
   const [editingWallet, setEditingWallet] = useState<Wallet | null>(null)
   const [walletToArchive, setWalletToArchive] = useState<Wallet | null>(null)
+  const [adjustingWallet, setAdjustingWallet] = useState<Wallet>()
+  const [greetingVisible, setGreetingVisible] = useState(false)
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false)
   const [editingSchedule, setEditingSchedule] = useState<ScheduledRecord>()
   const [editingTransaction, setEditingTransaction] = useState<LedgerTransaction | null>(null)
@@ -217,13 +224,14 @@ function App() {
       }
 
       try {
-        const [savedTheme, savedName, onboardingComplete, savedForecastBuffer, savedHumor, savedProfanity] = await Promise.all([
+        const [savedTheme, savedName, onboardingComplete, savedForecastBuffer, savedHumor, savedProfanity, savedForecastPreferences] = await Promise.all([
           getPreference('theme'),
           getPreference('displayName'),
           getPreference('onboardingComplete'),
           getPreference('forecastSafetyBufferCentavos'),
           getPreference('humorEnabled'),
           getPreference('profanityEnabled'),
+          getPreference('forecastView'),
         ])
         if (!active) return
         if (savedTheme === 'system' || savedTheme === 'light' || savedTheme === 'dark') {
@@ -231,6 +239,7 @@ function App() {
         }
         setDisplayName(savedName ?? '')
         setHumorEnabled(savedHumor !== 'false')
+        setForecastPreferences(readForecastPreferences(savedForecastPreferences))
         setProfanityEnabled(savedProfanity === 'true')
         if (savedForecastBuffer !== undefined) {
           const parsedBuffer = Number(savedForecastBuffer)
@@ -359,7 +368,7 @@ function App() {
     const type = String(formData.get('walletType') ?? '')
     const icon = String(formData.get('walletIcon') ?? '')
     const color = String(formData.get('walletColor') ?? '')
-    const amount = parsePesoToCentavos(String(formData.get('openingBalance') ?? ''))
+    const amount = parsePesoToCentavos(String(formData.get('openingBalance') ?? '').trim() || '0')
 
     if (!name) {
       setFormError('Add a name for this wallet.')
@@ -591,8 +600,9 @@ function App() {
     setSuccessMessage(`${expected.description} archived. Its receipt history stays saved.`)
   }
 
-  async function handleSaveDebt(debt: DebtRecord) {
-    await saveDebt(debt)
+  async function handleSaveDebt(debt: DebtRecord, principal?: LedgerTransaction) {
+    await saveDebt(debt, principal)
+    if (principal) setTransactions((current) => [...current, principal])
     setDebts((current) => current.some((item) => item.id === debt.id)
       ? current.map((item) => item.id === debt.id ? debt : item)
       : [...current, debt])
@@ -698,6 +708,12 @@ function App() {
     setSuccessMessage(`${formatPHP(amountCentavos)} na bayad, na-save na.`)
   }
 
+  function saveForecastPreferences(value: ForecastPreferences) {
+    setForecastPreferences(value)
+    void savePreference('forecastView', JSON.stringify(value)).catch((error: unknown) =>
+      setPageError(error instanceof Error ? error.message : 'Hindi na-save ang forecast settings.'))
+  }
+
   async function handleSaveForecastSafetyBuffer(amountCentavos: number) {
     if (!Number.isSafeInteger(amountCentavos) || amountCentavos < 0) {
       throw new TypeError('The safety buffer must be a non-negative centavo amount.')
@@ -707,10 +723,18 @@ function App() {
     setSuccessMessage('Na-save sa device ang reserba mo.')
   }
 
-  async function handleSaveSchedule(record: ScheduledRecord) {
+  async function handleSaveSchedule(record: ScheduledRecord, principalDate?: string) {
     if (record.kind === 'expectedIncome') await handleSaveExpectedIncome(record)
     else if (record.kind === 'obligation') await handleSaveObligation(record)
-    else await handleSaveDebt(record)
+    else if (principalDate !== undefined) {
+      const principal: LedgerTransaction = {
+        id: crypto.randomUUID(), kind: 'adjustment', walletId: record.walletId,
+        amountCentavos: record.direction === 'payable' ? record.amountCentavos : -record.amountCentavos,
+        description: record.direction === 'payable' ? 'Bagong hiram: ' + record.name : 'Bagong pautang: ' + record.name,
+        occurredOn: principalDate, createdAt: record.createdAt, updatedAt: record.updatedAt,
+      }
+      await handleSaveDebt({ ...record, principalTransactionId: principal.id }, principal)
+    } else await handleSaveDebt(record)
     setSuccessMessage('Na-save sa schedule. Kasama na ito sa forecast.')
     closeEntry()
   }
@@ -748,15 +772,39 @@ function App() {
   }, [atHome, loading, walletLoadError, planningLoadError, wallets, transactions, expectedIncomes, debts,
     obligations, today, endOn, forecastSafetyBufferCentavos])
 
-  const lastWalletId = useMemo(() => {
-    let latest: { walletId: string; updatedAt: string } | undefined
+  const outstanding = useMemo(() => {
+    if (!atHome || loading || planningLoadError) return {}
+    try { return { amount: outstandingObligations(debts, obligations, today) } }
+    catch { return { error: 'Hindi makuwenta ang kabuuang babayaran.' } }
+  }, [atHome, loading, planningLoadError, debts, obligations, today])
+
+  async function saveBalanceAdjustment(amountCentavos: number, reason: string, recorded: number) {
+    if (!adjustingWallet) return
+    const now = new Date().toISOString()
+    const entry: LedgerTransaction = {
+      id: crypto.randomUUID(), kind: 'adjustment', walletId: adjustingWallet.id,
+      occurredOn: localDateInput(), description: reason || 'Balance adjustment',
+      amountCentavos, createdAt: now, updatedAt: now,
+    }
+    await saveTransaction(entry, recorded)
+    setTransactions((current) => [...current, entry])
+    setAdjustingWallet(undefined)
+    setSuccessMessage('Na-adjust na ang wallet. Makikita ang record sa Activity.')
+  }
+
+  const lastEntryDefaults = useMemo(() => {
+    let latest: { walletId: string; updatedAt: string; kind: EntryKind } | undefined
     const activeIds = new Set(wallets.filter((wallet) => !wallet.archived).map((wallet) => wallet.id))
     for (const group of [transactions, expectedIncomes, debts, obligations]) {
       for (const record of group) {
-        if (activeIds.has(record.walletId) && (!latest || latest.updatedAt < record.updatedAt)) latest = record
+        if (record.kind !== 'adjustment' && activeIds.has(record.walletId) && (!latest || latest.updatedAt < record.updatedAt)) {
+          const kind = record.kind === 'debt' ? record.direction : record.kind === 'obligation' ? 'expense'
+            : record.kind === 'expectedIncome' ? 'income' : record.kind
+          latest = { walletId: record.walletId, updatedAt: record.updatedAt, kind }
+        }
       }
     }
-    return latest?.walletId
+    return latest
   }, [wallets, transactions, expectedIncomes, debts, obligations])
 
   const currentLabel = pages.find((item) => item.id === page)?.label ?? 'Home'
@@ -793,7 +841,7 @@ function App() {
       <a className="skip-link" href="#main-content">Dumiretso sa content</a>
       <aside className="sidebar">
         <a className="brand" href="#" onClick={() => setPage('home')}>
-          <Mascot className="mascot-brand" />
+          <span className="brand-mascot-slot" style={{ visibility: atHome && greetingVisible && !dialogOpen ? 'hidden' : undefined }}><Mascot className="mascot-brand" /></span>
           <span><strong>mpkpb?</strong><small>May Pera Ka Pa Ba?</small></span>
         </a>
 
@@ -824,7 +872,7 @@ function App() {
 
       <div className="main-column">
         <header className="topbar">
-          <div className="mobile-brand"><Mascot className="mascot-brand" /><strong>mpkpb?</strong></div>
+          <div className="mobile-brand"><span className="brand-mascot-slot" style={{ visibility: atHome && greetingVisible && !dialogOpen ? 'hidden' : undefined }}><Mascot className="mascot-brand" /></span><strong>mpkpb?</strong></div>
           <div className="breadcrumb"><strong>{currentLabel}</strong></div>
           <div className="top-actions">
             <span className="today-label">{todayLabel}</span>
@@ -895,6 +943,8 @@ function App() {
               onAddWallet={openWalletDialog}
               onQuickAdd={openTransactionDialog}
               month={month}
+              outstanding={outstanding}
+              onGreetingVisibility={setGreetingVisible}
               upcoming={!loading && !walletLoadError && !planningLoadError && wallets.length > 0 && (
                 <UpcomingList records={[...expectedIncomes, ...debts, ...obligations]} today={today}
                   visible={balanceVisible} onEdit={openEditSchedule} onSettle={handleSettleSchedule} />
@@ -914,6 +964,7 @@ function App() {
               dataUnavailable={walletLoadError}
               onAdd={openWalletDialog}
               onEdit={openEditWallet}
+              onAdjust={setAdjustingWallet}
               onArchive={setWalletToArchive}
               onRestore={(wallet) => void handleRestoreWallet(wallet)}
             />
@@ -944,6 +995,9 @@ function App() {
               dataUnavailable={walletLoadError || planningLoadError}
               visible={balanceVisible}
               safetyBufferCentavos={forecastSafetyBufferCentavos}
+              budgetPlans={budgetPlans}
+              preferences={forecastPreferences}
+              onChangePreferences={saveForecastPreferences}
               onSaveSafetyBuffer={handleSaveForecastSafetyBuffer}
             />
           )}
@@ -1063,11 +1117,11 @@ function App() {
                     <input
                       name="openingBalance"
                       inputMode="decimal"
-                      defaultValue={editingWallet ? centavosInput(editingWallet.openingBalanceCentavos) : '0.00'}
+                      defaultValue={editingWallet?.openingBalanceCentavos ? centavosInput(editingWallet.openingBalanceCentavos) : ''}
                       readOnly={Boolean(editingWallet && transactions.some((transaction) =>
                         transaction.walletId === editingWallet.id || transaction.toWalletId === editingWallet.id,
                       ))}
-                      required
+                      placeholder="0.00"
                       aria-label="Starting balance in pesos"
                     />
                   </span>
@@ -1096,13 +1150,19 @@ function App() {
           </section>
         </div>
       )}
+      {adjustingWallet && ledger.balances?.get(adjustingWallet.id) !== undefined && (
+        <AdjustBalance name={adjustingWallet.name} recorded={ledger.balances.get(adjustingWallet.id)!}
+          onClose={() => setAdjustingWallet(undefined)} onSave={saveBalanceAdjustment} />
+      )}
       {transactionDialogOpen && (
         <TransactionDialog
           wallets={wallets}
           categories={categories}
           editingTransaction={editingTransaction}
           editingSchedule={editingSchedule}
-          lastWalletId={lastWalletId}
+          lastWalletId={lastEntryDefaults?.walletId}
+          lastKind={lastEntryDefaults?.kind}
+          budgetPlans={budgetPlans}
           onSchedule={handleSaveSchedule}
           onClose={closeEntry}
           onSave={handleSaveTransaction}
@@ -1161,6 +1221,8 @@ function App() {
 function Dashboard({
   displayName,
   animateMascot,
+  outstanding,
+  onGreetingVisibility,
   gengMessage,
   wallets,
   totals,
@@ -1178,6 +1240,8 @@ function Dashboard({
   gengMessage?: string
   displayName: string
   animateMascot: boolean
+  outstanding: { amount?: number; error?: string }
+  onGreetingVisibility: (visible: boolean) => void
   wallets: Wallet[]
   totals: { all: number; spendable: number } | null
   balances: ReadonlyMap<string, number> | null
@@ -1191,6 +1255,13 @@ function Dashboard({
   upcoming: import('react').ReactNode
   month?: { result?: ReturnType<typeof calculateForecast>[number]; incoming?: number; outgoing?: number; error?: string }
 }) {
+  const greeting = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!greeting.current || !('IntersectionObserver' in window)) return
+    const observer = new IntersectionObserver(([entry]) => onGreetingVisibility(entry.isIntersecting))
+    observer.observe(greeting.current)
+    return () => { observer.disconnect(); onGreetingVisibility(false) }
+  }, [onGreetingVisibility])
   const money = (amount: number | undefined) => amount === undefined ? '—' : visible ? formatPHP(amount) : '••••'
   const shortage = month?.result?.spendableShortageEpisodes[0]
   const walletShortage = month?.result?.walletSummaries.flatMap((wallet) => wallet.shortageEpisodes)
@@ -1200,7 +1271,7 @@ function Dashboard({
   return (
     <>
       <div className="page-heading">
-        <div className="greeting-copy">
+        <div className="greeting-copy" ref={greeting}>
           <Mascot animated={animateMascot} className="greeting-mascot" />
           <div>
             <h1>Kumusta{displayName ? ', ' + displayName : ''}<span className="green-dot">.</span></h1>
@@ -1232,13 +1303,14 @@ function Dashboard({
         {!month?.error && <>
           <dl className="month-summary">
             <div><dt>Paparating na pera</dt><dd>{money(month?.incoming)}</dd></div>
-            <div><dt>Mga babayaran</dt><dd>{money(month?.outgoing)}</dd></div>
+            <div><dt>Due hanggang katapusan</dt><dd>{money(month?.outgoing)}</dd></div>
             <div><dt>Matitira sa'yo</dt><dd>{money(month?.result?.endingTotalCentavos)}</dd></div>
           </dl>
           {shortageDate ? <p className="form-error" role="status">Kukulangin ang spendable na pera o isang wallet simula {shortageDate}.</p>
             : month?.result && <p>Sa projection, kasya hanggang katapusan base sa mga naka-schedule.</p>}
         </>}
       </section>
+<section className="panel upcoming-panel"><h2>Mga babayaran</h2><strong>{money(outstanding.amount)}</strong><p>Natitirang bayarin at utang sa lahat ng petsa. Sa paulit-ulit na bill na walang end date, kasama ang susunod na hindi pa bayad.</p>{outstanding.error && <p role="alert">{outstanding.error}</p>}</section>
       {upcoming}
       {gengMessage && <p className="geng-note"><span aria-hidden="true">{GENG_EXPRESSION}</span> {gengMessage}</p>}
       <div>
@@ -1274,12 +1346,14 @@ function WalletRow({
   balanceCentavos,
   visible,
   onEdit,
+  onAdjust,
   onArchive,
   onRestore,
 }: {
   wallet: Wallet
   balanceCentavos?: number
   visible: boolean
+  onAdjust?: (wallet: Wallet) => void
   onEdit?: (wallet: Wallet) => void
   onArchive?: (wallet: Wallet) => void
   onRestore?: (wallet: Wallet) => void
@@ -1292,6 +1366,7 @@ function WalletRow({
       {(onEdit || onArchive || onRestore) ? (
         <div className="wallet-actions">
           {onEdit && <button className="wallet-action" type="button" onClick={() => onEdit(wallet)} aria-label={`Edit ${wallet.name}`}>Edit</button>}
+          {onAdjust && balanceCentavos !== undefined && <button className="wallet-action" type="button" onClick={() => onAdjust(wallet)}><SlidersHorizontal className="ui-icon" aria-hidden="true" /> Adjust balance</button>}
           {onArchive && <button className="wallet-action archive-action" type="button" onClick={() => onArchive(wallet)} aria-label={`Archive ${wallet.name}`}>Archive</button>}
           {onRestore && <button className="wallet-action" type="button" onClick={() => onRestore(wallet)} aria-label={`Restore ${wallet.name}`}>Restore</button>}
         </div>
@@ -1310,6 +1385,7 @@ function WalletsPage({
   dataUnavailable,
   onAdd,
   onEdit,
+  onAdjust,
   onArchive,
   onRestore,
 }: {
@@ -1321,6 +1397,7 @@ function WalletsPage({
   loading: boolean
   dataUnavailable: boolean
   onAdd: () => void
+  onAdjust: (wallet: Wallet) => void
   onEdit: (wallet: Wallet) => void
   onArchive: (wallet: Wallet) => void
   onRestore: (wallet: Wallet) => void
@@ -1343,7 +1420,7 @@ function WalletsPage({
           <>
             {wallets.length > 0 ? (
               <div className="wallet-list">
-                {wallets.map((wallet) => <WalletRow key={wallet.id} wallet={wallet} balanceCentavos={balances?.get(wallet.id)} visible={visible} onEdit={onEdit} onArchive={onArchive} />)}
+                {wallets.map((wallet) => <WalletRow key={wallet.id} wallet={wallet} balanceCentavos={balances?.get(wallet.id)} visible={visible} onEdit={onEdit} onAdjust={onAdjust} onArchive={onArchive} />)}
               </div>
             ) : !loading && <div className="empty-active-wallets"><p>No active wallets. Your archived balances remain in the total.</p><button className="button button-outline" type="button" onClick={onAdd}><Plus className="ui-icon" aria-hidden="true" /> Add wallet</button></div>}
             {archivedWallets.length > 0 && (

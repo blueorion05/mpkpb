@@ -24,6 +24,12 @@ export interface GengPunchline {
 export const GENG_EXPRESSION = '(ง •̀_•́)ง'
 
 const punchlines: readonly GengPunchline[] = [
+  { context: 'healthy-wallet', text: 'Sheesh, may datung pa! Chill lang sa checkout, geng.', mildProfanity: false },
+  { context: 'tight-wallet', text: 'Tagilid na, gar. Ekis muna sa budol.', mildProfanity: false },
+  { context: 'budget', text: 'Omsim, solid ang may plano bago mag-checkout.', mildProfanity: false },
+  { context: 'forecast', text: 'Ayaw natin ng financial jumpscare, bossing. Silip sa due dates.', mildProfanity: false },
+  { context: 'saving', text: 'Solid, may naipon ang youngstunna.', mildProfanity: false },
+  { context: 'ledger', text: 'Putek, dumaan lang ba ’yung sahod? Silipin natin ang records.', mildProfanity: true },
   { context: 'generic', text: 'Ey, what’s good, geng? Silip muna sa mga naka-schedule.', mildProfanity: false },
   { context: 'generic', text: 'Deserve mo ba talaga o nabudol ka lang?', mildProfanity: false },
   { context: 'healthy-wallet', text: 'May pera pa, youngstunna. Chill lang sa checkout.', mildProfanity: false },

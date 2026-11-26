@@ -50,3 +50,7 @@ export function sumCentavos(amounts: readonly number[]): number {
     return sum
   }, 0)
 }
+
+export function balanceAdjustment(recordedCentavos: number, actualCentavos: number) {
+  return sumCentavos([actualCentavos, -recordedCentavos])
+}

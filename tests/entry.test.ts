@@ -1,9 +1,11 @@
-﻿import assert from 'node:assert/strict'
+import { balanceAdjustment } from '../src/domain/money.ts'
+import { readForecastPreferences } from '../src/domain/forecastPreferences.ts'
+import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { makeSchedule, validateCompletedDate } from '../src/domain/entry.ts'
 import { calculateForecast } from '../src/domain/forecast.ts'
 import { calculateWalletBalances, type LedgerTransaction } from '../src/domain/ledger.ts'
-import { updateObligationPayment, updateDebtSettlement } from '../src/domain/debts.ts'
+import { outstandingObligations, updateObligationPayment, updateDebtSettlement } from '../src/domain/debts.ts'
 
 const today = '2026-11-25'
 const timestamp = today + 'T00:00:00Z'
@@ -84,4 +86,37 @@ test('early partial and full settlement reduce forecast remainder exactly once',
   }
   const partialDebt = updateDebtSettlement(payable, debtPayment, today)
   assert.equal(partialDebt.settlements[0].dueOn, payable.dueOn)
+})
+
+test('all-date obligations include remaining principal and finite future installments exactly once', () => {
+  const payable = makeSchedule('payable', { ...input, id: 'payable', amountCentavos: 15_000,
+    recurrence: 'monthly', installmentAmountCentavos: 5_000, dueOn: '2026-12-15' })
+  const bill = makeSchedule('bill', { ...input, id: 'bill', dueOn: '2026-11-20', recurrence: 'monthly' })
+  const receivable = makeSchedule('receivable', { ...input, id: 'incoming' })
+  assert.ok(payable.kind === 'debt' && bill.kind === 'obligation' && receivable.kind === 'debt')
+  const partial = { ...bill, installmentCount: 3, payments: [
+    { transactionId: 'part', dueOn: bill.dueOn, amountCentavos: 1_000 },
+  ] }
+  assert.equal(outstandingObligations([payable, receivable, { ...payable, archived: true }],
+    [partial], today), 29_000)
+  assert.equal(outstandingObligations([], [{ ...partial, installmentCount: undefined }], today), 4_000)
+  const [projection] = calculateForecast({
+    ...base, expectedIncomes: [], debts: [payable], obligations: [partial],
+  }, ['expected'])
+  assert.equal(projection.startingTotalCentavos, 20_000)
+  assert.equal(projection.endingTotalCentavos, 16_000)
+})
+
+test('adjustment uses the signed difference and avoids rounding or overflow', () => {
+  assert.equal(balanceAdjustment(100_000, 85_000), -15_000)
+  assert.equal(balanceAdjustment(-50, 0), 50)
+  assert.throws(() => balanceAdjustment(-1, Number.MAX_SAFE_INTEGER))
+})
+
+test('forecast settings round-trip and reject unknown filters or invalid dates', () => {
+  const view = { scenario: 'optimistic', startOn: '2026-11-26', endOn: '2026-12-15', walletId: 'cash', budgetId: 'budget' }
+  assert.deepEqual(readForecastPreferences(JSON.stringify(view)), view)
+  assert.deepEqual(readForecastPreferences('{"scenario":"random","startOn":"invalid","walletId":4}'), {
+    scenario: 'expected', startOn: undefined, endOn: undefined, walletId: undefined, budgetId: undefined,
+  })
 })

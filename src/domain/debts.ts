@@ -1,5 +1,6 @@
 import {
   isLedgerTransaction,
+  isValidNotes,
   type LedgerTransaction,
   type TransactionCategory,
 } from './ledger.ts'
@@ -15,6 +16,7 @@ export interface DebtSettlement {
 }
 
 export interface DebtRecord {
+  notes?: string
   id: string
   kind: 'debt'
   name: string
@@ -35,6 +37,7 @@ export interface DebtRecord {
 }
 
 export interface FinancialObligation {
+  notes?: string
   id: string
   kind: 'obligation'
   description: string
@@ -184,6 +187,7 @@ function validateSettlements(
 export function isDebtRecord(value: unknown): value is DebtRecord {
   if (typeof value !== 'object' || value === null) return false
   const debt = value as Partial<DebtRecord>
+  if (!isValidNotes(debt.notes)) return false
   const recurrence = debt.recurrence
   const installmentCount = debt.installmentCount
   if (
@@ -250,6 +254,7 @@ export function isDebtRecord(value: unknown): value is DebtRecord {
 export function isFinancialObligation(value: unknown): value is FinancialObligation {
   if (typeof value !== 'object' || value === null) return false
   const obligation = value as Partial<FinancialObligation>
+  if (!isValidNotes(obligation.notes)) return false
   const recurrence = obligation.recurrence
   const installmentCount = obligation.installmentCount
   if (
@@ -549,4 +554,26 @@ export function validateDebtReferences(
   const categoryKind = debt.direction === 'payable' ? 'expense' : 'income'
   return debt.categoryId === undefined ||
     categories.some((category) => category.id === debt.categoryId && category.kind === categoryKind)
+}
+
+export function outstandingObligations(debts: readonly DebtRecord[], bills: readonly FinancialObligation[], today: string): number {
+  const principal = debts.filter((debt) => !debt.archived && debt.direction === 'payable')
+    .map((debt) => getDebtProgress(debt, today).remainingTotalCentavos)
+  const scheduled = bills.filter((bill) => !bill.archived).map((bill) => {
+    const progress = getObligationProgress(bill, today)
+    if (progress.status === 'paid') return 0
+    const later = bill.installmentCount === undefined ? 0
+      : Math.max(0, bill.installmentCount - progress.installmentsCompleted - 1)
+    return sumCentavos([progress.remainingThisOccurrenceCentavos, later * bill.amountCentavos])
+  })
+  return sumCentavos([...principal, ...scheduled])
+}
+
+export function matchesDebtPrincipal(debt: DebtRecord, entry: LedgerTransaction): boolean {
+  if (entry.kind === 'adjustment') {
+    return entry.walletId === debt.walletId &&
+      entry.amountCentavos === (debt.direction === 'payable' ? debt.amountCentavos : -debt.amountCentavos)
+  }
+  return entry.kind === (debt.direction === 'payable' ? 'expense' : 'income') &&
+    entry.amountCentavos === debt.amountCentavos
 }

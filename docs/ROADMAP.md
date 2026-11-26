@@ -113,3 +113,9 @@
 - [x] Integrate local geng branding, controlled mascot animation, and branded favicon and PWA icons.
 - [x] Use Lucide for functional UI icons and preserve existing icon selections.
 - [x] Verify browser timing, reduced motion, responsive themes, offline assets, and saved-data compatibility.
+
+## Phase 13 — v1.2.1 Everyday UX
+
+- [x] Separate all-date obligations and forecast-period dues.
+- [x] Simplify Add record, add an explicit balance adjustment, and persist forecast preferences.
+- [x] Verify mobile and desktop entry, financial regressions, and offline persistence.

@@ -1,4 +1,6 @@
 import { isCategoryIcon, type CategoryIcon } from '../domain/categoryIcons.ts'
+import { transactionDeltas } from '../domain/ledger.ts'
+import { sumCentavos } from '../domain/money.ts'
 import { validateCompletedDate } from '../domain/entry.ts'
 import {
   calculateWalletBalances,
@@ -27,6 +29,7 @@ import {
   updateDebtSettlement,
   updateObligationPayment,
   validateDebtReferences,
+  matchesDebtPrincipal,
   type DebtRecord,
   type FinancialObligation,
 } from '../domain/debts.ts'
@@ -405,7 +408,7 @@ function localDateOnly(): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-export async function saveTransaction(entry: LedgerTransaction): Promise<UpdatedScheduledEvent> {
+export async function saveTransaction(entry: LedgerTransaction, expectedWalletBalance?: number): Promise<UpdatedScheduledEvent> {
   if (!isLedgerTransaction(entry)) {
     throw new Error('The transaction details are invalid. Please review the amount and wallets.')
   }
@@ -432,6 +435,21 @@ export async function saveTransaction(entry: LedgerTransaction): Promise<Updated
       message: 'The selected wallet no longer exists.',
     },
   ]
+  if (expectedWalletBalance !== undefined) {
+    const walletCheck = checks[0].request
+    checks.push({
+      request: transactions.getAll() as IDBRequest<unknown>,
+      isValid: (rows) => {
+        const wallet: unknown = walletCheck.result
+        if (!isWallet(wallet) || wallet.archived || !Array.isArray(rows) || !rows.every(isLedgerTransaction)) return false
+        try {
+          const relevant = rows.filter((row) => row.walletId === wallet.id || row.toWalletId === wallet.id)
+          return sumCentavos([wallet.openingBalanceCentavos, ...relevant.map((row) => transactionDeltas(row).get(wallet.id) ?? 0)]) === expectedWalletBalance
+        } catch { return false }
+      },
+      message: 'Nagbago ang wallet balance. I-reload ang app at subukan ulit.',
+    })
+  }
   if (entry.kind === 'transfer' && entry.toWalletId) {
     checks.push({
       request: transaction.objectStore('wallets').get(entry.toWalletId),
@@ -521,8 +539,7 @@ export async function saveTransaction(entry: LedgerTransaction): Promise<Updated
       return
     }
     if (principalDebts.some((debt) =>
-      debt.amountCentavos !== candidate.amountCentavos ||
-      candidate.kind !== (debt.direction === 'payable' ? 'expense' : 'income'),
+      !matchesDebtPrincipal(debt, candidate) || previousRequest.result?.kind !== candidate.kind,
     )) {
       fail('The original debt transaction must keep its amount and transaction type.')
       return
@@ -1074,11 +1091,9 @@ function validateDebts(records: unknown[], transactionRecords: unknown[], wallet
       }
       linkedPrincipals.add(debt.principalTransactionId)
       const principal = byId.get(debt.principalTransactionId)
-      const expectedKind = debt.direction === 'payable' ? 'expense' : 'income'
       if (
         !principal ||
-        principal.kind !== expectedKind ||
-        principal.amountCentavos !== debt.amountCentavos ||
+        !matchesDebtPrincipal(debt, principal) ||
         isExpectedIncomeReceipt(principal) ||
         isDebtSettlementTransaction(principal) ||
         isObligationPaymentTransaction(principal)
@@ -1107,7 +1122,8 @@ function validateDebts(records: unknown[], transactionRecords: unknown[], wallet
   return records
 }
 
-export async function saveDebt(debt: DebtRecord): Promise<void> {
+export async function saveDebt(debt: DebtRecord, newPrincipal?: LedgerTransaction): Promise<void> {
+  if (newPrincipal) validateCompletedDate(newPrincipal.occurredOn, localDateOnly())
   if (!isDebtRecord(debt)) {
     throw new Error('The debt details are invalid. Review the amount, due date, and installment schedule.')
   }
@@ -1183,12 +1199,17 @@ export async function saveDebt(debt: DebtRecord): Promise<void> {
       return
     }
     const transactionById = new Map(transactionRecords.map((entry) => [entry.id, entry]))
+    if (previous?.principalTransactionId &&
+      transactionById.get(previous.principalTransactionId)?.kind === 'adjustment' &&
+      previous.principalTransactionId !== debt.principalTransactionId) {
+      fail('Kailangang manatiling naka-link ang orihinal na wallet movement ng utang.')
+      return
+    }
     if (debt.principalTransactionId) {
-      const principal = transactionById.get(debt.principalTransactionId)
+      const principal = newPrincipal ?? transactionById.get(debt.principalTransactionId)
       if (
         !principal ||
-        principal.kind !== (debt.direction === 'payable' ? 'expense' : 'income') ||
-        principal.amountCentavos !== debt.amountCentavos ||
+        !matchesDebtPrincipal(debt, principal) ||
         isExpectedIncomeReceipt(principal) ||
         isDebtSettlementTransaction(principal) ||
         isObligationPaymentTransaction(principal)
@@ -1211,6 +1232,14 @@ export async function saveDebt(debt: DebtRecord): Promise<void> {
         fail('Each debt settlement must match its linked ledger transaction.')
         return
       }
+    }
+    if (newPrincipal) {
+      if (previous || wallet.archived || transactionById.has(newPrincipal.id) || newPrincipal.id !== debt.principalTransactionId ||
+        !isLedgerTransaction(newPrincipal) || newPrincipal.kind !== 'adjustment') {
+        fail('Hindi ma-record ang bagong utang at wallet movement.')
+        return
+      }
+      transaction.objectStore('transactions').add(newPrincipal)
     }
     debts.put(debt)
   }

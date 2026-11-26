@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.1 — Quicker records and clearer balances
+
+- Separated all-date outstanding obligations from month-end dues.
+- Simplified Add record to four types with inferred status, optional notes, and explicit existing-versus-new debt.
+- Added a ledger-backed Adjust balance action and persisted the forecast view in local preferences.
+- Refined mascot visibility, desktop navigation spacing, currency focus rings, and blank starting amounts.
+
 ## 1.2.0 — Geng branding and Lucide icons
 
 - Used the supplied geng artwork for the dashboard, onboarding, empty states, navigation branding, favicon, and regular and maskable PWA icons.

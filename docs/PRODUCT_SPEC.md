@@ -56,3 +56,7 @@ The Home dashboard shows actual and spendable balances, money expected and due b
 ## Branding and iconography
 
 The supplied geng mascot is the product brand. Only the dashboard instance animates. It stays idle between one-shot sequences and remains static with reduced motion. Compact branding and app icons use the original idle artwork. Lucide supplies functional icons, with a curated picker for wallets and financial categories. Existing wallet icon IDs and categories remain valid.
+
+## Everyday refinements
+
+Home shows outstanding debt and bills across all dates separately from month-end dues. Ongoing bills without a fixed count contribute their next unpaid occurrence. Add record starts with four types and suggests whether a record should post or be scheduled. New borrowing and lending require an explicit choice before moving wallet funds. Wallet adjustments post the difference to Activity.

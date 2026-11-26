@@ -5,6 +5,7 @@ export type TransactionKind = 'income' | 'expense' | 'transfer' | 'adjustment'
 export type CategoryKind = 'income' | 'expense'
 
 export interface LedgerTransaction {
+  notes?: string
   id: string
   kind: TransactionKind
   occurredOn: string
@@ -119,9 +120,14 @@ function isValidLinkedSchedule(transaction: Partial<LedgerTransaction>): boolean
   return true
 }
 
+export function isValidNotes(value: unknown) {
+  return value === undefined || (typeof value === 'string' && value.length <= 500)
+}
+
 export function isLedgerTransaction(value: unknown): value is LedgerTransaction {
   if (typeof value !== 'object' || value === null) return false
   const transaction = value as Partial<LedgerTransaction>
+  if (!isValidNotes(transaction.notes)) return false
   if (
     typeof transaction.id !== 'string' ||
     !transaction.id ||

@@ -2137,3 +2137,21 @@
 .error-banner > .ui-icon + span {
   flex: 1;
 }
+
+.side-nav { margin-top: 28px; }
+.currency-input { min-width: 0; min-height: 42px; height: auto; border-radius: 8px; }
+.currency-input:focus-within { outline: 2px solid var(--brand-dark); outline-offset: 2px; }
+.currency-input:has(input:focus-within) { border-color: var(--brand-dark); }
+.currency-input input:focus, .currency-input input:focus-visible { outline: none; box-shadow: none; }
+.currency-input input { min-width: 0; height: 40px; }
+.currency-input b { font-size: 1rem; padding-inline-start: .75rem; }
+.entry-amount .currency-input input { font-size: 1.5rem; height: 52px; }
+.balance-adjustment-dialog { color: var(--text); margin: auto; max-width: calc(100% - 2rem); }
+.balance-adjustment-dialog::backdrop { background: rgb(20 27 18 / 55%); }
+
+.transaction-dialog .quick-choices {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.transaction-dialog .quick-choices button { padding-inline: .25rem; white-space: nowrap; }
+.brand-mascot-slot { display: inline-flex; flex: none; }

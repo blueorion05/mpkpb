@@ -48,3 +48,9 @@ The v1.0.0 tag identifies release commit f708b79. The GitHub push and existing V
 - v0.9 verified install manifest and offline shell build. Edge QA passed offline wallet creation and persistence, lazy-loaded forecast, and deferred service-worker activation with preserved data.
 - Route splitting reduced the initial JavaScript from approximately 426 KB (115 KB gzip) to 340 KB (98 KB gzip).
 - v1.0 local QA passed with 36 tests, lint, type checking, a production build, and Edge browser QA. A v4 IndexedDB fixture migrated to v5 with the wallet, expense, and exact PHP 37.66 balance preserved.
+
+## v1.2.1
+
+- All 45 tests, lint, standalone type checking, and the production build passed.
+- Edge QA passed the mascot, currency focus, empty starting balance, four-type desktop/mobile entry, new borrowing, adjustment, forecast preferences after navigation and offline reload, recovery, and legacy migration checks.
+- Forecast schedule filters are display-only. Scheduled transfers still require a paired future-transfer model.

@@ -1,3 +1,5 @@
+import { defaultForecastPreferences, type ForecastPreferences } from '../domain/forecastPreferences'
+import type { BudgetPlan } from '../domain/planning'
 import { ArrowDownLeft, ArrowUpRight, TriangleAlert } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
 import type { Wallet } from '../db/database'
@@ -22,6 +24,9 @@ interface ForecastPageProps {
   loading: boolean
   dataUnavailable: boolean
   visible: boolean
+  budgetPlans: readonly BudgetPlan[]
+  preferences: ForecastPreferences
+  onChangePreferences: (value: ForecastPreferences) => void
   safetyBufferCentavos: number
   onSaveSafetyBuffer: (amountCentavos: number) => Promise<void>
 }
@@ -138,12 +143,16 @@ export default function ForecastPage({
   dataUnavailable,
   visible,
   safetyBufferCentavos,
+  budgetPlans, preferences, onChangePreferences,
   onSaveSafetyBuffer,
 }: ForecastPageProps) {
   const [today] = useState(localDateInput)
-  const [endOn, setEndOn] = useState(() => monthEnd(localDateInput()))
-  const [walletId, setWalletId] = useState('')
-  const [selectedScenario, setSelectedScenario] = useState<ForecastScenario>('expected')
+  const maxEndOn = addDays(today, 3660)
+  const endOn = preferences.endOn && preferences.endOn >= today && preferences.endOn <= maxEndOn ? preferences.endOn : monthEnd(today)
+  const startOn = preferences.startOn && preferences.startOn >= today && preferences.startOn <= endOn ? preferences.startOn : today
+  const walletId = wallets.find((wallet) => wallet.id === preferences.walletId && !wallet.archived)?.id ?? ''
+  const budget = budgetPlans.find((plan) => plan.id === preferences.budgetId && !plan.archived)
+  const selectedScenario = preferences.scenario
   const [bufferInput, setBufferInput] = useState((safetyBufferCentavos / 100).toFixed(2))
   const [bufferError, setBufferError] = useState('')
   const [bufferSaving, setBufferSaving] = useState(false)
@@ -184,7 +193,10 @@ export default function ForecastPage({
 
   const selectedResult = forecast.results.find((result) => result.scenario === selectedScenario)
   const selectedWallet = wallets.find((wallet) => wallet.id === walletId)
-  const visibleEvents = selectedResult?.events.filter((event) => !walletId || event.walletId === walletId) ?? []
+  const visibleEvents = selectedResult?.events.filter((event) =>
+    (!walletId || event.walletId === walletId) && event.projectedOn >= startOn &&
+    (!budget || (event.projectedOn >= budget.startOn && event.projectedOn <= budget.endOn &&
+      budget.categoryLimits.some((limit) => limit.categoryId === event.categoryId)))) ?? []
   const selectedWalletSummary = selectedResult?.walletSummaries.find((item) => item.walletId === walletId)
   const selectedBalance = selectedWallet
     ? selectedResult?.points[selectedResult.points.length - 1]?.balances[walletId] ?? 0
@@ -261,7 +273,6 @@ export default function ForecastPage({
     setPurchaseError('')
   }
 
-  const maxEndOn = addDays(today, 3660)
 
   return (
     <>
@@ -282,7 +293,8 @@ export default function ForecastPage({
             value={endOn}
             onChange={(event) => {
               const nextEndOn = event.target.value
-              setEndOn(nextEndOn)
+              if (!nextEndOn || nextEndOn < today || nextEndOn > maxEndOn) return
+              onChangePreferences({ ...preferences, endOn: nextEndOn, startOn: startOn > nextEndOn ? undefined : preferences.startOn })
               if (purchaseDate > nextEndOn) setPurchaseDate(nextEndOn)
               if (hypotheticalPurchase && hypotheticalPurchase.occurredOn > nextEndOn) {
                 setHypotheticalPurchase(undefined)
@@ -293,15 +305,32 @@ export default function ForecastPage({
         </label>
         <label className="field">
           <span>Aling wallet?</span>
-          <select value={walletId} onChange={(event) => setWalletId(event.target.value)}>
+          <select value={walletId} onChange={(event) => onChangePreferences({ ...preferences, walletId: event.target.value })}>
             <option value="">Lahat ng wallet</option>
-            {wallets.map((wallet) => (
+            {wallets.filter((wallet) => !wallet.archived).map((wallet) => (
               <option key={wallet.id} value={wallet.id}>
                 {wallet.name}{wallet.protected ? ' · Protected' : ''}{wallet.archived ? ' · Archived' : ''}
               </option>
             ))}
           </select>
         </label>
+        <label className="field">Ipakita mula
+          <input type="date" min={today} max={endOn} value={startOn} onChange={(event) => {
+            const start = event.target.value
+            if (start >= today && start <= endOn) onChangePreferences({ ...preferences, startOn: start })
+          }} />
+        </label>
+        <label className="field">Budget filter sa schedule
+          <select value={budget?.id ?? ''} onChange={(event) => onChangePreferences({ ...preferences, budgetId: event.target.value })}>
+            <option value="">Lahat ng schedule</option>
+            {budgetPlans.filter((plan) => !plan.archived).map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
+          </select>
+        </label>
+        <button className="button button-quiet" type="button" onClick={() => {
+          onChangePreferences(defaultForecastPreferences)
+          setHypotheticalPurchase(undefined)
+          setPurchaseDate(today)
+        }}>Reset forecast view</button>
         <form className="forecast-buffer-form" onSubmit={(event) => void saveBuffer(event)}>
           <label className="field">
             <span>Reserbang pera</span>
@@ -396,7 +425,7 @@ export default function ForecastPage({
                   aria-pressed={selectedScenario === scenario}
                   className={selectedScenario === scenario ? 'selected' : ''}
                   key={scenario}
-                  onClick={() => setSelectedScenario(scenario)}
+                  onClick={() => onChangePreferences({ ...preferences, scenario })}
                 >
                   {scenarioLabels[scenario]}
                 </button>
@@ -468,10 +497,10 @@ export default function ForecastPage({
 
                 <h2>{selectedWallet ? `${selectedWallet.name} balance` : 'Balance ng lahat ng wallet'}</h2>
               </div>
-              <span className="forecast-period">{today} – {endOn}</span>
+              <span className="forecast-period">{startOn} – {endOn}</span>
             </div>
             <ForecastChart
-              result={selectedResult}
+              result={{ ...selectedResult, points: selectedResult.points.filter((point) => point.date >= startOn) }}
               walletId={walletId}
               walletName={selectedWallet?.name ?? ''}
               visible={visible}

@@ -11,7 +11,7 @@ export const entryLabels: Record<EntryKind, string> = {
   payable: 'Utang ko', receivable: 'May utang sa akin', adjustment: 'Ayusin ang balance',
 }
 
-export const quickAddKinds: readonly EntryKind[] = ['income', 'expense', 'transfer', 'bill', 'payable', 'receivable']
+export const quickAddKinds: readonly EntryKind[] = ['expense', 'income', 'transfer', 'payable']
 
 export function ledgerKind(kind: EntryKind): TransactionKind {
   if (kind === 'receivable') return 'income'
@@ -35,6 +35,7 @@ export function makeSchedule(
     recurrence: RecurrenceFrequency
     confidence: ExpectedIncome['confidence']
     timestamp: string
+    notes?: string
     installmentAmountCentavos?: number
   },
   previous?: ScheduledRecord,
@@ -49,6 +50,7 @@ export function makeSchedule(
   const base = {
     id: previous?.id ?? entry.id,
     walletId: entry.walletId,
+    notes: entry.notes,
     categoryId: entry.categoryId,
     amountCentavos: entry.amountCentavos,
     dueOn: entry.dueOn,

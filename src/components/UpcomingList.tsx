@@ -55,7 +55,7 @@ export default function UpcomingList({ records, today, visible, onEdit, onSettle
         const active = settling === record.id
         return <li key={record.id}>
           <div className="upcoming-row">
-            <div><strong>{title}</strong>
+            <div><strong>{title}</strong>{record.notes && <small>{record.notes}</small>}
               <small>{entryLabels[kind]} · {dueOn} · {remaining === 0 ? action : dueOn < today ? 'Lampas na sa due date' : dueOn === today ? 'Due ngayon' : 'Upcoming'}</small>
             </div>
             <strong>{visible ? formatPHP(remaining || record.amountCentavos) : '••••'}</strong>

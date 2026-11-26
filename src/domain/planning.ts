@@ -1,4 +1,4 @@
-import { isLedgerTransaction, type LedgerTransaction, type TransactionCategory } from './ledger.ts'
+import { isLedgerTransaction, isValidNotes, type LedgerTransaction, type TransactionCategory } from './ledger.ts'
 import { sumCentavos } from './money.ts'
 import {
   isDateOnly,
@@ -33,6 +33,7 @@ export interface IncomeReceipt {
 }
 
 export interface ExpectedIncome {
+  notes?: string
   id: string
   kind: 'expectedIncome'
   description: string
@@ -130,6 +131,7 @@ export function isBudgetPlan(value: unknown): value is BudgetPlan {
 export function isExpectedIncome(value: unknown): value is ExpectedIncome {
   if (typeof value !== 'object' || value === null) return false
   const expected = value as Partial<ExpectedIncome>
+  if (!isValidNotes(expected.notes)) return false
   const amountCentavos = expected.amountCentavos
   const monthlyAnchorDay = expected.monthlyAnchorDay
   if (

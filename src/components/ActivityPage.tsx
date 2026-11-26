@@ -227,7 +227,7 @@ export default function ActivityPage({
                     {transaction.kind === 'income' ? <ArrowDownLeft className="ui-icon" aria-hidden="true" /> : transaction.kind === 'expense' ? <ArrowUpRight className="ui-icon" aria-hidden="true" /> : transaction.kind === 'transfer' ? <ArrowLeftRight className="ui-icon" aria-hidden="true" /> : <SlidersHorizontal className="ui-icon" aria-hidden="true" />}
                   </span>
                   <div className="transaction-info">
-                    <strong>{transaction.description}</strong>
+                    <strong title={transaction.notes}>{transaction.description}</strong>
                     <span>
                       {kindLabels[transaction.kind]} · {transactionDateFormatter.format(new Date(`${transaction.occurredOn}T00:00:00.000Z`))}
                     </span>
@@ -236,6 +236,7 @@ export default function ActivityPage({
                         ? `${sourceWallet?.name ?? 'Unknown wallet'} → ${destinationWallet?.name ?? 'Unknown wallet'} · Fee ${formatPHP(transaction.feeCentavos ?? 0)}`
                         : [
                             sourceWallet?.name,
+                            transaction.notes,
                             category ? <span className="category-label"><CategorySymbol icon={category.icon} /> {category.name}</span> : null,
                             transaction.kind === 'income' ? 'Nakuha na' : transaction.kind === 'expense' ? 'Bayad na' : null,
                             transaction.expectedIncomeId ? 'Receipt ng naka-schedule na income' : null,

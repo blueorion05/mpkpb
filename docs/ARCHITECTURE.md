@@ -87,3 +87,9 @@ The Home month-end summary runs the expected scenario only and uses the existing
 The supplied GIF is composited into a local transparent WebP atlas. The dashboard canvas plays nine frames at the original 180 ms cadence and blends the final frame into the exact idle pose. Visibility and reduced-motion listeners control playback. Other mascot instances use the same static pose. Vite's service worker precaches the atlas, idle image, favicon, manifest, and app icons.
 
 Wallet icon IDs map directly to a fixed Lucide set. Categories accept an optional validated icon ID and existing records default to a tag. The optional field requires no structural IndexedDB migration and survives JSON backup and restore. Category icon edits preserve the record ID and all existing financial references.
+
+## Outstanding obligations and forecast preferences
+
+Outstanding totals use remaining payable principal, finite bill remainders, and the next unpaid occurrence of ongoing bills. Forecast projections remain bounded by the selected end date. The forecast view persists its range, scenario, wallet, and budget filter in the preferences store. The start date and budget filter narrow the displayed schedule, while projected balances account for all applicable events from today. Budget attribution still uses category and transaction date.
+
+Balance adjustments verify the displayed balance inside the ledger write transaction. New borrowing and lending atomically save a debt and its linked signed principal movement. The existing debt settlement logic then applies repayments without counting principal as income or spending. Legacy debt links remain valid. No IndexedDB schema bump is required.

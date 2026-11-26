@@ -413,8 +413,9 @@ function DebtDialog({ debt, wallets, categories, transactions, onClose, onSave }
   const hasSettlements = Boolean(debt?.settlements.length)
   const dialogRef = useDialogKeyboard(onClose, saving)
   const selectableCategories = categories.filter((category) => category.kind === (direction === 'payable' ? 'expense' : 'income'))
+  const recordedMovement = transactions.find((entry) => entry.id === debt?.principalTransactionId && entry.kind === 'adjustment')
   const matchingTransactions = transactions.filter((entry) =>
-    entry.kind === (direction === 'payable' ? 'expense' : 'income'),
+    entry.id === recordedMovement?.id || entry.kind === (direction === 'payable' ? 'expense' : 'income'),
   )
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -432,10 +433,11 @@ function DebtDialog({ debt, wallets, categories, transactions, onClose, onSave }
       return
     }
     const now = new Date().toISOString()
-    const selectedPrincipal = String(form.get('principalTransactionId') ?? '')
+    const selectedPrincipal = recordedMovement?.id ?? String(form.get('principalTransactionId') ?? '')
     const debtRecord: DebtRecord = {
       id: debt?.id ?? crypto.randomUUID(),
       kind: 'debt',
+      notes: debt?.notes,
       name,
       direction,
       amountCentavos,
@@ -498,7 +500,7 @@ function DebtDialog({ debt, wallets, categories, transactions, onClose, onSave }
           {hasSettlements && <p className="field-note">The due date, recurrence, and installment structure are locked once settlement history exists.</p>}
           <label className="field">
             <span>Original transaction <small>optional</small></span>
-            <select name="principalTransactionId" defaultValue={debt?.principalTransactionId ?? ''} disabled={hasSettlements}>
+            <select name="principalTransactionId" defaultValue={debt?.principalTransactionId ?? ''} disabled={hasSettlements || Boolean(recordedMovement)}>
               <option value="">Not recorded yet</option>
               {matchingTransactions.map((entry) => <option key={entry.id} value={entry.id}>{entry.description} · {formatPHP(entry.amountCentavos)} · {displayDate(entry.occurredOn)}</option>)}
             </select>
@@ -543,6 +545,7 @@ function ObligationDialog({ obligation, wallets, categories, onClose, onSave }: 
     const bill: FinancialObligation = {
       id: obligation?.id ?? crypto.randomUUID(),
       kind: 'obligation',
+      notes: obligation?.notes,
       description: String(form.get('description') ?? '').trim(),
       amountCentavos,
       walletId: String(form.get('walletId') ?? ''),

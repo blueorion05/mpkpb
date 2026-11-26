@@ -654,6 +654,7 @@ function ExpectedIncomeDialog({ expected, wallets, categories, onClose, onSave }
     const expectedIncome: ExpectedIncome = {
       id: expected?.id ?? crypto.randomUUID(),
       kind: 'expectedIncome',
+      notes: expected?.notes,
       description,
       amountCentavos,
       walletId,

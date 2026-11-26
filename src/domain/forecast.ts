@@ -35,6 +35,7 @@ export interface ForecastEvent {
   kind: ForecastEventKind
   direction: 'inflow' | 'outflow'
   amountCentavos: number
+  categoryId?: string
   confidence?: ExpectedIncome['confidence']
 }
 
@@ -194,6 +195,7 @@ function collectDebtEvents(
       dueOn,
       projectedOn: laterDate(dueOn, request.today),
       kind: 'debt',
+      categoryId: debt.categoryId,
       direction: debt.direction === 'payable' ? 'outflow' : 'inflow',
       amountCentavos: amountCentavos - paidCentavos,
     })
@@ -230,6 +232,7 @@ function collectObligationEvents(
       dueOn,
       projectedOn: laterDate(dueOn, request.today),
       kind: 'obligation',
+      categoryId: obligation.categoryId,
       direction: 'outflow',
       amountCentavos: obligation.amountCentavos - paidCentavos,
     })
