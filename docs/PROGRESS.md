@@ -54,3 +54,5 @@ The v1.0.0 tag identifies release commit f708b79. The GitHub push and existing V
 - All 45 tests, lint, standalone type checking, and the production build passed.
 - Edge QA passed the mascot, currency focus, empty starting balance, four-type desktop/mobile entry, new borrowing, adjustment, forecast preferences after navigation and offline reload, recovery, and legacy migration checks.
 - Forecast schedule filters are display-only. Scheduled transfers still require a paired future-transfer model.
+
+- Branding follow-up: the Home mascot slot collapses when the dashboard mascot is visible. When the brand mascot returns, it slides in from the left and moves the brand text right. Reduced motion skips the transition. All 45 tests, lint, type checking, and the production build passed.

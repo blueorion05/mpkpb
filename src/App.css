@@ -2154,4 +2154,54 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .transaction-dialog .quick-choices button { padding-inline: .25rem; white-space: nowrap; }
-.brand-mascot-slot { display: inline-flex; flex: none; }
+.brand,
+.mobile-brand {
+  --brand-mascot-width: 2.55rem;
+  --brand-mascot-gap: 10px;
+  --brand-mascot-transition: 220ms;
+  gap: 0;
+  min-block-size: var(--brand-mascot-width);
+}
+
+.mobile-brand {
+  --brand-mascot-gap: 7px;
+}
+
+.brand-mascot-slot {
+  display: inline-flex;
+  flex: none;
+  inline-size: var(--brand-mascot-width);
+  margin-inline-end: var(--brand-mascot-gap);
+  overflow: clip;
+  transition:
+    inline-size var(--brand-mascot-transition) ease,
+    margin-inline-end var(--brand-mascot-transition) ease,
+    visibility 0s;
+}
+
+.brand-mascot-slot .mascot-brand {
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    transform var(--brand-mascot-transition) ease,
+    opacity var(--brand-mascot-transition) ease;
+}
+
+.brand-mascot-slot[data-hidden="true"] {
+  inline-size: 0;
+  margin-inline-end: 0;
+  visibility: hidden;
+  transition-delay: 0s, 0s, var(--brand-mascot-transition);
+}
+
+.brand-mascot-slot[data-hidden="true"] .mascot-brand {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand,
+  .mobile-brand {
+    --brand-mascot-transition: 0s;
+  }
+}

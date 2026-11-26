@@ -84,6 +84,8 @@ try {
   await ev('document.querySelector("[name=walletName]").value="QA Wallet"; document.querySelector("form.wallet-form").requestSubmit()')
   await wait(has('QA Wallet'))
   await wait('getComputedStyle(document.querySelector(".mobile-brand .brand-mascot-slot")).visibility === "hidden"')
+  const brandTextOffset = () => ev('document.querySelector(".mobile-brand strong").getBoundingClientRect().left - document.querySelector(".mobile-brand").getBoundingClientRect().left')
+  assert.equal(await brandTextOffset(), 0)
   await wait('Boolean(navigator.serviceWorker.controller)')
   const mascot = 'document.querySelector(".greeting-mascot canvas")'
   assert.equal(await ev(mascot + '.hidden'), true)
@@ -114,6 +116,7 @@ try {
   assert.ok(await ev('Array.from(document.querySelectorAll(".mobile-nav button")).every(button => button.querySelector("svg.lucide"))'))
   await click('More')
   await wait('getComputedStyle(document.querySelector(".mobile-brand .brand-mascot-slot")).visibility === "visible"')
+  assert.ok(await brandTextOffset() > 32)
   await wait(has('Mga naka-save'))
   await click('Gumawa ng snapshot')
   await wait(has('Na-save ang snapshot sa device na ito.'))

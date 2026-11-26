@@ -756,6 +756,7 @@ function App() {
   const endDate = new Date(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0).getDate()
   const endOn = today.slice(0, 8) + String(endDate).padStart(2, '0')
   const atHome = page === 'home'
+  const hideBrandMascot = atHome && greetingVisible && !dialogOpen
   const month = useMemo(() => {
     if (!atHome || loading || walletLoadError || planningLoadError || !wallets.length) return
     try {
@@ -841,7 +842,7 @@ function App() {
       <a className="skip-link" href="#main-content">Dumiretso sa content</a>
       <aside className="sidebar">
         <a className="brand" href="#" onClick={() => setPage('home')}>
-          <span className="brand-mascot-slot" style={{ visibility: atHome && greetingVisible && !dialogOpen ? 'hidden' : undefined }}><Mascot className="mascot-brand" /></span>
+          <span className="brand-mascot-slot" data-hidden={hideBrandMascot}><Mascot className="mascot-brand" /></span>
           <span><strong>mpkpb?</strong><small>May Pera Ka Pa Ba?</small></span>
         </a>
 
@@ -872,7 +873,7 @@ function App() {
 
       <div className="main-column">
         <header className="topbar">
-          <div className="mobile-brand"><span className="brand-mascot-slot" style={{ visibility: atHome && greetingVisible && !dialogOpen ? 'hidden' : undefined }}><Mascot className="mascot-brand" /></span><strong>mpkpb?</strong></div>
+          <div className="mobile-brand"><span className="brand-mascot-slot" data-hidden={hideBrandMascot}><Mascot className="mascot-brand" /></span><strong>mpkpb?</strong></div>
           <div className="breadcrumb"><strong>{currentLabel}</strong></div>
           <div className="top-actions">
             <span className="today-label">{todayLabel}</span>
