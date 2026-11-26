@@ -55,7 +55,7 @@ The Home dashboard shows actual and spendable balances, money expected and due b
 
 ## Branding and iconography
 
-The supplied geng mascot is the product brand. Only the dashboard instance animates. It stays idle between one-shot sequences and remains static with reduced motion. Compact branding and app icons use the original idle artwork. Lucide supplies functional icons, with a curated picker for wallets and financial categories. Existing wallet icon IDs and categories remain valid.
+The supplied geng mascot is the product brand. The visible dashboard or navigation mascot animates. It stays idle between one-shot sequences and remains static with reduced motion. Compact branding and app icons use the original idle artwork. Lucide supplies functional icons, with a curated picker for wallets and financial categories. Existing wallet icon IDs and categories remain valid.
 
 ## Everyday refinements
 

@@ -56,3 +56,9 @@ The v1.0.0 tag identifies release commit f708b79. The GitHub push and existing V
 - Forecast schedule filters are display-only. Scheduled transfers still require a paired future-transfer model.
 
 - Branding follow-up: the Home mascot slot collapses when the dashboard mascot is visible. When the brand mascot returns, it slides in from the left and moves the brand text right. Reduced motion skips the transition. All 45 tests, lint, type checking, and the production build passed.
+
+- The mobile header and desktop sidebar mascots now play the same idle-and-laugh cycle as Home when visible. Edge verified both layouts and reduced motion. All 45 tests, lint, type checking, and the production build passed.
+
+- Mobile fields use at least 16px text to avoid focus zoom while preserving pinch-to-zoom. All 45 tests, lint, type checking, and the production build passed. Edge mobile emulation verified computed text sizes for wallet, currency, select, and transaction inputs. Native iOS Safari remains untested.
+
+- Added the ProjectOrion creator credit under More > Settings. All 45 tests, lint, type checking, and the production build passed.

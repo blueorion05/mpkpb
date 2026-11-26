@@ -84,7 +84,7 @@ The Home month-end summary runs the expected scenario only and uses the existing
 
 ## Mascot and icon persistence
 
-The supplied GIF is composited into a local transparent WebP atlas. The dashboard canvas plays nine frames at the original 180 ms cadence and blends the final frame into the exact idle pose. Visibility and reduced-motion listeners control playback. Other mascot instances use the same static pose. Vite's service worker precaches the atlas, idle image, favicon, manifest, and app icons.
+The supplied GIF is composited into a local transparent WebP atlas. The visible dashboard or navigation canvas plays nine frames at the original 180 ms cadence and blends the final frame into the exact idle pose. Visibility and reduced-motion listeners control playback. Onboarding and empty-state instances use the same static pose. Vite's service worker precaches the atlas, idle image, favicon, manifest, and app icons.
 
 Wallet icon IDs map directly to a fixed Lucide set. Categories accept an optional validated icon ID and existing records default to a tag. The optional field requires no structural IndexedDB migration and survives JSON backup and restore. Category icon edits preserve the record ID and all existing financial references.
 

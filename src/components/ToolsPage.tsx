@@ -392,6 +392,7 @@ export default function ToolsPage({
           <section className="panel about-panel">
             <span className="card-icon mint-icon"><LockKeyhole className="ui-icon" aria-hidden="true" /></span><div><h2>Privacy ng data</h2>            <p>Sa browser na ito lang naka-save ang pera records mo. Mawawala ang data kapag nilinis ang site storage. Magtabi ng JSON backup.</p></div>
           </section>
+          <p className="tools-muted">by <strong>ProjectOrion</strong></p>
         </section>
       )}
     </>

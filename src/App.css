@@ -2205,3 +2205,16 @@
     --brand-mascot-transition: 0s;
   }
 }
+
+/* Keep editable controls large enough to avoid focus zoom on mobile. */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea,
+  .field input,
+  .field select,
+  .transaction-filters .field input,
+  .transaction-filters .field select {
+    font-size: 16px;
+  }
+}

@@ -757,6 +757,7 @@ function App() {
   const endOn = today.slice(0, 8) + String(endDate).padStart(2, '0')
   const atHome = page === 'home'
   const hideBrandMascot = atHome && greetingVisible && !dialogOpen
+  const canAnimateMascot = !dialogOpen && !transactionDialogOpen && !walletToArchive && !transactionToDelete && !adjustingWallet
   const month = useMemo(() => {
     if (!atHome || loading || walletLoadError || planningLoadError || !wallets.length) return
     try {
@@ -842,7 +843,7 @@ function App() {
       <a className="skip-link" href="#main-content">Dumiretso sa content</a>
       <aside className="sidebar">
         <a className="brand" href="#" onClick={() => setPage('home')}>
-          <span className="brand-mascot-slot" data-hidden={hideBrandMascot}><Mascot className="mascot-brand" /></span>
+          <span className="brand-mascot-slot" data-hidden={hideBrandMascot}><Mascot animated={!hideBrandMascot && canAnimateMascot} className="mascot-brand" /></span>
           <span><strong>mpkpb?</strong><small>May Pera Ka Pa Ba?</small></span>
         </a>
 
@@ -873,7 +874,7 @@ function App() {
 
       <div className="main-column">
         <header className="topbar">
-          <div className="mobile-brand"><span className="brand-mascot-slot" data-hidden={hideBrandMascot}><Mascot className="mascot-brand" /></span><strong>mpkpb?</strong></div>
+          <div className="mobile-brand"><span className="brand-mascot-slot" data-hidden={hideBrandMascot}><Mascot animated={!hideBrandMascot && canAnimateMascot} className="mascot-brand" /></span><strong>mpkpb?</strong></div>
           <div className="breadcrumb"><strong>{currentLabel}</strong></div>
           <div className="top-actions">
             <span className="today-label">{todayLabel}</span>
@@ -932,7 +933,7 @@ function App() {
           {page === 'home' && (
             <Dashboard
               displayName={displayName}
-              animateMascot={!dialogOpen && !transactionDialogOpen && !walletToArchive && !transactionToDelete}
+              animateMascot={canAnimateMascot}
               gengMessage={humorEnabled && !loading && !walletLoadError
                 ? getGengMessage(walletContext, { humorEnabled, profanityEnabled }) : undefined}
               wallets={activeWallets}
@@ -1258,9 +1259,10 @@ function Dashboard({
 }) {
   const greeting = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    if (!greeting.current || !('IntersectionObserver' in window)) return
+    const mascot = greeting.current?.querySelector('.greeting-mascot')
+    if (!mascot || !('IntersectionObserver' in window)) return
     const observer = new IntersectionObserver(([entry]) => onGreetingVisibility(entry.isIntersecting))
-    observer.observe(greeting.current)
+    observer.observe(mascot)
     return () => { observer.disconnect(); onGreetingVisibility(false) }
   }, [onGreetingVisibility])
   const money = (amount: number | undefined) => amount === undefined ? '—' : visible ? formatPHP(amount) : '••••'
@@ -1275,7 +1277,7 @@ function Dashboard({
         <div className="greeting-copy" ref={greeting}>
           <Mascot animated={animateMascot} className="greeting-mascot" />
           <div>
-            <h1>Kumusta{displayName ? ', ' + displayName : ''}<span className="green-dot">.</span></h1>
+            <h1>Watzupp{displayName ? ', ' + displayName : ''}<span className="green-dot">.</span></h1>
             <p>Eto ang pera mo ngayon at ang paparating ngayong buwan.</p>
           </div>
         </div>
