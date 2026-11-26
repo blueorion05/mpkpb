@@ -1,3 +1,5 @@
+import Toast from './Toast'
+import MoneyInput from './MoneyInput'
 import { Plus, X } from 'lucide-react'
 import Mascot from './Mascot'
 import { CategoryIconPicker, CategorySymbol } from './IconPicker'
@@ -292,7 +294,7 @@ function PlansPage({
         )}
       </div>
 
-      {pageError && <div className="error-banner" role="alert">{pageError}</div>}
+      {pageError && <Toast key={pageError} tone="error" message={pageError} onDismiss={() => setPageError('')} />}
       {dataUnavailable ? (
         <div className="empty-page plans-empty">
           <h2>Hindi mabasa ang budget at schedule</h2>
@@ -592,7 +594,7 @@ function BudgetPlanDialog({ plan, categories, onClose, onSave, onCreateCategory 
               return (
                 <div className="budget-limit-row" key={category.id}>
                   <label><input type="checkbox" name={`include-${category.id}`} defaultChecked={Boolean(existingLimit)} /><span className="category-label"><CategorySymbol icon={category.icon} /> {category.name}</span></label>
-                  <span className="currency-input"><b>₱</b><input name={`limit-${category.id}`} inputMode="decimal" defaultValue={existingLimit ? amountInputValue(existingLimit.limitCentavos) : ''} placeholder="0.00" aria-label={`${category.name} limit`} /></span>
+                  <span className="currency-input"><b>₱</b><MoneyInput name={`limit-${category.id}`} defaultValue={existingLimit ? amountInputValue(existingLimit.limitCentavos) : ''} placeholder="0.00" aria-label={`${category.name} limit`} /></span>
                 </div>
               )
             })}
@@ -697,7 +699,7 @@ function ExpectedIncomeDialog({ expected, wallets, categories, onClose, onSave }
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <label className="field"><span>Description</span><input autoFocus name="description" required maxLength={120} defaultValue={expected?.description ?? ''} placeholder="e.g. Salary" /></label>
           <div className="form-row">
-            <label className="field"><span>Expected amount</span><span className="currency-input"><b>₱</b><input name="amount" inputMode="decimal" required defaultValue={expected ? amountInputValue(expected.amountCentavos) : ''} placeholder="0.00" /></span></label>
+            <label className="field"><span>Expected amount</span><span className="currency-input"><b>₱</b><MoneyInput name="amount" required defaultValue={expected ? amountInputValue(expected.amountCentavos) : ''} placeholder="0.00" /></span></label>
             <label className="field"><span>Kailan due?</span><input name="dueOn" type="date" required defaultValue={expected?.dueOn ?? localDateInput()} disabled={Boolean(expected?.receipts.length)} /></label>
           </div>
           <div className="form-row">
@@ -773,7 +775,7 @@ function IncomeReceiptDialog({ expected, onClose, onReceive }: IncomeReceiptDial
         </div>
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <div className="receipt-remaining"><span>Still expected</span><strong>{formatPHP(progress.remainingCentavos)}</strong></div>
-          <label className="field"><span>Amount received</span><span className="currency-input"><b>₱</b><input autoFocus name="amount" inputMode="decimal" required defaultValue={amountInputValue(progress.remainingCentavos)} /></span></label>
+          <label className="field"><span>Amount received</span><span className="currency-input"><b>₱</b><MoneyInput autoFocus name="amount" required defaultValue={amountInputValue(progress.remainingCentavos)} /></span></label>
           {error && <p className="form-error" role="alert">{error}</p>}
           <div className="dialog-actions">
             <button className="button button-secondary" type="button" onClick={onClose} disabled={saving}>Cancel</button>

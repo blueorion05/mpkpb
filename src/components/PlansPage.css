@@ -22,7 +22,7 @@
   background: transparent;
   cursor: pointer;
   font: inherit;
-  font-size: 10px;
+  font-size: var(--text-label);
   font-weight: 650;
 }
 
@@ -38,7 +38,7 @@
   margin-left: auto;
   padding: 0 8px;
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: var(--text-label);
 }
 
 .plans-archived-toggle input,
@@ -75,14 +75,14 @@
 
 .plan-card-heading h2 {
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: var(--text-section);
   letter-spacing: -0.25px;
 }
 
 .plan-card-heading p {
   margin: 5px 0 0;
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: var(--text-label);
 }
 
 .plan-actions {
@@ -110,13 +110,13 @@
 
 .plan-overview small {
   color: var(--text-faint);
-  font-size: 8px;
+  font-size: var(--text-caption);
   font-weight: 750;
   letter-spacing: 0.65px;
 }
 
 .plan-overview strong {
-  font-size: 13px;
+  font-size: var(--text-caption);
   font-variant-numeric: tabular-nums;
 }
 
@@ -143,7 +143,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  font-size: 9px;
+  font-size: var(--text-label);
 }
 
 .budget-category-heading > span {
@@ -172,7 +172,7 @@
 
 .budget-category-list li > small {
   color: var(--text-faint);
-  font-size: 8px;
+  font-size: var(--text-caption);
 }
 
 .confidence-tag {
@@ -180,7 +180,7 @@
   width: fit-content;
   padding: 4px 7px;
   border-radius: 20px;
-  font-size: 8px;
+  font-size: var(--text-caption);
   font-weight: 700;
 }
 
@@ -206,7 +206,7 @@
   gap: 8px;
   margin-bottom: 12px;
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: var(--text-caption);
 }
 
 .income-status {
@@ -239,7 +239,7 @@
   gap: 10px;
   padding: 9px 0 0;
   color: var(--text-soft);
-  font-size: 8px;
+  font-size: var(--text-caption);
 }
 
 .receipt-history strong {
@@ -253,13 +253,8 @@
   border-radius: 9px;
   color: var(--text-soft);
   background: var(--surface-subtle);
-  font-size: 9px;
+  font-size: var(--text-caption);
   line-height: 1.6;
-}
-
-.planning-dialog {
-  max-height: min(90vh, 760px);
-  overflow-y: auto;
 }
 
 .budget-category-fields {
@@ -274,7 +269,7 @@
 .budget-category-fields legend {
   padding: 0 5px;
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: var(--text-label);
   font-weight: 700;
 }
 
@@ -290,7 +285,7 @@
   align-items: center;
   gap: 7px;
   color: var(--text);
-  font-size: 9px;
+  font-size: var(--text-caption);
 }
 
 .budget-limit-row .currency-input {
@@ -319,12 +314,12 @@
   border-radius: 9px;
   color: var(--text-soft);
   background: var(--surface-subtle);
-  font-size: 9px;
+  font-size: var(--text-caption);
 }
 
 .receipt-remaining strong {
   color: var(--text);
-  font-size: 16px;
+  font-size: var(--text-caption);
 }
 
 @media (max-width: 760px) {
@@ -354,7 +349,7 @@
   }
 
   .plan-overview strong {
-    font-size: 11px;
+    font-size: var(--text-caption);
   }
 
   .plans-tabs {

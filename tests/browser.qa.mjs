@@ -123,13 +123,16 @@ try {
   const brandCanvas = 'document.querySelector(".mobile-brand .mascot-brand canvas")'
   assert.equal(await ev(brandCanvas + '.hidden'), true)
   await cmd('Emulation.setEmulatedMedia', {features: [{name: 'prefers-reduced-motion', value: 'no-preference'}]})
-  await wait(brandCanvas + '?.dataset.frame === "1"')
+  await ev('window.scrollTo(0, 0)')
+  await wait('Number(' + brandCanvas + '?.dataset.frame) > 0')
   assert.equal(await ev('document.querySelector(".sidebar .mascot-brand canvas").hidden'), true)
   await cmd('Emulation.setEmulatedMedia', {features: [{name: 'prefers-reduced-motion', value: 'reduce'}]})
   await wait(brandCanvas + '.hidden')
   await wait(has('Mga naka-save'))
   await click('Gumawa ng snapshot')
   await wait(has('Na-save ang snapshot sa device na ito.'))
+  assert.ok(await ev('Boolean(document.querySelector("#app-toasts .toast-success [role=status]")) && getComputedStyle(document.querySelector("#app-toasts")).position === "fixed"'))
+  await wait('!document.querySelector("#app-toasts .toast-success")')
   assert.ok(await ev('document.documentElement.scrollWidth <= innerWidth'))
   const fixture={format:'mpkpb',version:1,createdAt:'2026-01-01T00:00:00Z',records:{wallets:[],transactions:[],categories:[],budgets:[],debts:[],scheduledEvents:[],preferences:[{key:'onboardingComplete',value:'true'}]}}
   await ev('(()=>{const d=new DataTransfer(); d.items.add(new File(['+JSON.stringify(JSON.stringify(fixture))+'],"qa.json",{type:"application/json"})); const e=document.querySelector("input[type=file]");e.files=d.files;e.dispatchEvent(new Event("change",{bubbles:true}));})()')
@@ -157,9 +160,26 @@ try {
   await cmd('Emulation.setDeviceMetricsOverride', {width: 320, height: 420, deviceScaleFactor: 1, mobile: true})
   await ev('document.querySelector(".page-heading button.add-wallet-button").focus(); document.querySelector(".page-heading button.add-wallet-button").click()')
   await wait('Boolean(document.querySelector(".transaction-dialog"))')
+  const dialogBounds = () => ev('(() => { const r = document.querySelector(".transaction-dialog").getBoundingClientRect(); return [r.top, r.width, r.height] })()')
+  const initialDialogBounds = await dialogBounds()
+  const stickyBounds = () => ev('[".dialog-heading", ".dialog-actions"].map(selector => document.querySelector(".transaction-dialog " + selector).getBoundingClientRect().top)')
+  const initialStickyBounds = await stickyBounds()
   await ev('document.querySelector(".entry-options").open = true')
-  assert.ok(await ev('document.querySelector(".dialog-backdrop").scrollHeight > 420'))
-  assert.ok(await ev('document.querySelector(".dialog-backdrop").scrollWidth === document.querySelector(".dialog-backdrop").clientWidth'))
+  assert.deepEqual(await dialogBounds(), initialDialogBounds)
+  assert.ok(await ev('(() => { const d = document.querySelector(".transaction-dialog"); d.scrollTop = d.scrollHeight; return d.scrollTop > 0 && d.scrollWidth <= d.clientWidth && document.querySelector(".dialog-backdrop").scrollTop === 0 })()'))
+  assert.ok((await stickyBounds()).every((value, index) => Math.abs(value - initialStickyBounds[index]) < 1))
+  assert.ok(await ev('(() => { const dialog = document.querySelector(".transaction-dialog"); const bounds = dialog.getBoundingClientRect(); return [...dialog.querySelectorAll(".dialog-heading button, .dialog-actions button")].every(button => { const r = button.getBoundingClientRect(); return r.top >= bounds.top && r.bottom <= bounds.bottom; }); })()'))
+  const amountField = '.transaction-dialog [name=amount]'
+  await ev('document.querySelector(' + JSON.stringify(amountField) + ').focus()')
+  await cmd('Input.insertText', {text: 'abc'})
+  assert.equal(await ev('document.querySelector(' + JSON.stringify(amountField) + ').value'), '')
+  async function pasteAmount(text) {
+    await ev('(() => { const input = document.querySelector(' + JSON.stringify(amountField) + '); const data = new DataTransfer(); data.setData("text/plain",' + JSON.stringify(text) + '); input.dispatchEvent(new ClipboardEvent("paste",{clipboardData:data,bubbles:true,cancelable:true})); })()')
+  }
+  await pasteAmount('₱1,234.50')
+  await wait('document.querySelector(' + JSON.stringify(amountField) + ').value === "1234.50"')
+  await pasteAmount('bad 12')
+  assert.equal(await ev('document.querySelector(' + JSON.stringify(amountField) + ').value'), '1234.50')
   await cmd('Input.dispatchKeyEvent', {type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27})
   await wait('!document.querySelector(".transaction-dialog")')
   await wait('document.activeElement === document.querySelector(".page-heading button.add-wallet-button")')
@@ -214,10 +234,13 @@ try {
     await click('I-save ang bayad o receipt')
     await wait('!document.querySelector(".settlement-form")')
   }
+  const netMoney = () => ev('document.querySelector(".net-money-card .balance-amount").textContent')
+  assert.match(await netMoney(), /50\.00/)
   await pay('10')
   assert.match(await balance(), /90\.00/)
   assert.match(await ev(row + '.textContent'), /20\.00/)
   await pay('20')
+  assert.match(await netMoney(), /50\.00/)
   assert.match(await balance(), /70\.00/)
   assert.match(await ev(row + '.textContent'), /Bayad na/)
   assert.equal(await ev(row + '.querySelectorAll("button").length'), 0)
@@ -232,6 +255,16 @@ try {
   await wait('document.documentElement.dataset.theme === "dark"')
   await addRecord('Utang ko', 'New borrowing QA', '25', future, true)
   assert.match(await balance(), /95\.00/)
+  await addRecord('Utang ko', 'Undated debt QA', '8')
+  await addRecord('May utang sa akin', 'Undated collection QA', '7')
+  const undatedRow = 'Array.from(document.querySelectorAll(".upcoming-list li")).find(row => row.textContent.includes("Undated debt QA"))'
+  await ev('const expand = Array.from(document.querySelectorAll(".upcoming-panel button")).find(button => button.textContent.trim() === "Tingnan lahat"); if (expand) expand.click()')
+  await wait(undatedRow + '?.textContent.includes("Walang due date")')
+  await ev(undatedRow + '.querySelector(".button-outline").click()')
+  await fill('.settlement-form [name="amount"]', '3')
+  await click('I-save ang bayad o receipt')
+  await wait('!document.querySelector(".settlement-form")')
+  assert.match(await balance(), /92\.00/)
   await click('Aabot pa?')
   await wait(has('Pwedeng gastusin kada araw'))
   await click('Optimistic')
@@ -259,6 +292,7 @@ try {
   await wait('Boolean(document.querySelector("[name=walletName]"))')
   await ev('document.querySelector("[name=walletName]").value="Offline Wallet"; document.querySelector("form.wallet-form").requestSubmit()')
   await wait(has('Offline Wallet'))
+  assert.ok(await ev('(() => { const balances = [...document.querySelectorAll(".wallet-list .wallet-amount")]; return balances.length >= 2 && balances.every(node => node.getBoundingClientRect().right === balances[0].getBoundingClientRect().right) && document.documentElement.scrollWidth <= innerWidth })()'))
   await cmd('Page.reload')
   await wait(has('Naka-lock ang MPKPB?'))
   await fill('[name=pin]','123456')
@@ -315,10 +349,28 @@ try {
   await wait(has('Legacy expense'))
   const sidebarCanvas = 'document.querySelector(".sidebar .mascot-brand canvas")'
   await cmd('Emulation.setEmulatedMedia', {features: [{name: 'prefers-reduced-motion', value: 'no-preference'}]})
-  await wait(sidebarCanvas + '?.dataset.frame === "1"')
+  await wait('Number(' + sidebarCanvas + '?.dataset.frame) > 0')
   assert.equal(await ev('document.querySelector(".mobile-brand .mascot-brand canvas").hidden'), true)
   await wait(has('Bayad na'))
   assert.ok(await ev('document.documentElement.scrollWidth <= innerWidth'))
+  await cmd('Emulation.setEmulatedMedia', {features: [{name: 'prefers-reduced-motion', value: 'reduce'}]})
+  for (const [width, height] of [[1280, 820], [375, 780]]) {
+    await cmd('Emulation.setDeviceMetricsOverride', {width, height, deviceScaleFactor: 1, mobile: width < 760})
+    for (const [navLabel, heading] of [
+      ['Home', 'Watzupp'], ['Wallets', 'Wallets'], ['Activity', 'Activity'], ['Aabot pa?', 'Aabot pa ba?'],
+      ['Budget', 'Budget at schedule'], ['More', 'Iba pa'],
+    ]) {
+      await click(navLabel)
+      await wait('document.querySelector(".page-heading h1")?.textContent.includes(' + JSON.stringify(heading) + ')')
+      assert.ok(await ev('document.documentElement.scrollWidth <= innerWidth'), navLabel + ' at ' + width + 'px')
+      if (navLabel === 'Home' && width === 1280) {
+        assert.ok(await ev('new Set([...document.querySelectorAll(".balance-grid .balance-amount")].map(amount => amount.getBoundingClientRect().top)).size === 1'))
+      }
+      if (navLabel === 'Aabot pa?') {
+        assert.ok(await ev('new Set([...document.querySelectorAll(".forecast-controls .field > span:first-child:not(.currency-input)")].map(label => getComputedStyle(label).fontSize)).size === 1'))
+      }
+    }
+  }
   assert.deepEqual(runtimeErrors,[])
   console.log('PASS: mascot visibility and animation, currency focus, empty opening balance, compact quick add, new borrowing, balance adjustment, forecast preferences, themes, recovery, offline PWA, and legacy data.')
 } finally {

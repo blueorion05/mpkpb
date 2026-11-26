@@ -1,4 +1,5 @@
-﻿import { useEffect, useRef, useState, type FormEvent } from 'react'
+import MoneyInput from './MoneyInput'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { balanceAdjustment, formatPHP, parsePesoToCentavos } from '../domain/money'
 
 export default function AdjustBalance({ name, recorded, onClose, onSave }: {
@@ -38,8 +39,8 @@ export default function AdjustBalance({ name, recorded, onClose, onSave }: {
       <h2 id="adjust-title">Adjust balance · {name}</h2>
       <p>Recorded balance: <strong>{formatPHP(recorded)}</strong></p>
       <label className="field">Actual balance ngayon
-        <span className="currency-input"><b aria-hidden="true">₱</b><input autoFocus inputMode="decimal" value={value} placeholder="0.00"
-          onChange={(event) => setValue(event.target.value)} required /></span>
+        <span className="currency-input"><b aria-hidden="true">₱</b><MoneyInput allowNegative autoFocus value={value} placeholder="0.00"
+          onValueChange={setValue} required /></span>
       </label>
       <p aria-live="polite">Adjustment: <strong>{adjustment === undefined ? '—' : formatPHP(adjustment)}</strong></p>
       {value && adjustment === undefined && <p className="form-error">Maglagay ng valid na balance hanggang dalawang decimal.</p>}

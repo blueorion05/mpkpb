@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import { makeSchedule, validateCompletedDate } from '../src/domain/entry.ts'
 import { calculateForecast } from '../src/domain/forecast.ts'
 import { calculateWalletBalances, type LedgerTransaction } from '../src/domain/ledger.ts'
-import { outstandingObligations, updateObligationPayment, updateDebtSettlement } from '../src/domain/debts.ts'
+import { getDebtProgress, outstandingObligations, updateObligationPayment, updateDebtSettlement } from '../src/domain/debts.ts'
 
 const today = '2026-11-25'
 const timestamp = today + 'T00:00:00Z'
@@ -119,4 +119,29 @@ test('forecast settings round-trip and reject unknown filters or invalid dates',
   assert.deepEqual(readForecastPreferences('{"scenario":"random","startOn":"invalid","walletId":4}'), {
     scenario: 'expected', startOn: undefined, endOn: undefined, walletId: undefined, budgetId: undefined,
   })
+})
+
+test('undated debts can be settled without appearing in a dated forecast', () => {
+  const payable = makeSchedule('payable', { ...input, dueOn: '' })
+  const receivable = makeSchedule('receivable', { ...input, id: 'undated-in', dueOn: '' })
+  assert.ok(payable.kind === 'debt' && receivable.kind === 'debt')
+  assert.equal(payable.dueOn, undefined)
+  const progress = getDebtProgress(payable, today)
+  assert.equal(progress.status, 'undated')
+  assert.equal(outstandingObligations([payable, receivable], [], today), 5_000)
+  const [result] = calculateForecast({
+    ...base, expectedIncomes: [], debts: [payable, receivable], obligations: [],
+  }, ['expected'])
+  assert.deepEqual(result.events, [])
+  const payment: LedgerTransaction = {
+    id: 'undated-pay', kind: 'expense', walletId: 'cash', occurredOn: today, description: 'Paid',
+    amountCentavos: 1_500, createdAt: timestamp, updatedAt: timestamp,
+    debtSettlementId: payable.id, debtSettlementDueOn: progress.dueOn,
+    debtSettlementExcludedFromTotals: false,
+  }
+  const partial = updateDebtSettlement(payable, payment, today)
+  assert.equal(outstandingObligations([partial], [], today), 3_500)
+  const final = updateDebtSettlement(partial, { ...payment, id: 'undated-final', amountCentavos: 3_500 }, today)
+  assert.equal(getDebtProgress(final, today).status, 'settled')
+  assert.throws(() => makeSchedule('payable', { ...input, dueOn: '', recurrence: 'monthly' }), /due date/)
 })

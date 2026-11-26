@@ -911,7 +911,7 @@
   inset: 0;
   display: grid;
   place-items: center;
-  overflow-y: auto;
+  overflow: clip;
   padding: 18px;
   background: rgb(20 27 18 / 48%);
   backdrop-filter: blur(4px);
@@ -1517,8 +1517,10 @@
 }
 
 .wallet-dialog {
-  max-height: calc(100dvh - 36px);
+  --dialog-height: 37rem;
+  block-size: min(var(--dialog-height), calc(100dvh - max(1rem, env(safe-area-inset-top)) - max(1rem, env(safe-area-inset-bottom))));
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .dialog-heading p {
@@ -2013,14 +2015,7 @@
   .mobile-nav-link small { font-size: .65rem; }
 }
 
-.dialog-backdrop:has(.transaction-dialog) {
-  place-items: safe center;
-}
 
-.transaction-dialog {
-  max-height: none;
-  overflow: visible;
-}
 
 .transaction-list .transaction-row {
   padding-block: .65rem;
@@ -2147,6 +2142,12 @@
 .currency-input b { font-size: 1rem; padding-inline-start: .75rem; }
 .entry-amount .currency-input input { font-size: 1.5rem; height: 52px; }
 .balance-adjustment-dialog { color: var(--text); margin: auto; max-width: calc(100% - 2rem); }
+.transaction-dialog,
+.planning-dialog { --dialog-height: 42rem; }
+
+.confirm-dialog,
+.wallet-dialog[aria-labelledby="archive-plan-title"] { --dialog-height: 19rem; }
+
 .balance-adjustment-dialog::backdrop { background: rgb(20 27 18 / 55%); }
 
 .transaction-dialog .quick-choices {
@@ -2217,4 +2218,279 @@
   .transaction-filters .field select {
     font-size: 16px;
   }
+}
+
+.wallet-list {
+  grid-template-columns: 35px minmax(0, 1fr) minmax(0, auto) auto;
+  column-gap: 11px;
+}
+
+.wallet-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: 35px minmax(0, 1fr) minmax(0, auto) auto;
+  padding-block: 10px;
+}
+
+@supports (grid-template-columns: subgrid) {
+  .wallet-row { grid-template-columns: subgrid; }
+}
+
+.wallet-info strong {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.wallet-amount {
+  margin-left: 0;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.wallet-actions {
+  margin-left: 0;
+  justify-content: end;
+}
+
+.wallet-action {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .wallet-list, .wallet-row { column-gap: 8px; }
+  .wallet-row:has(.wallet-actions) { row-gap: 7px; }
+  .wallet-row .wallet-actions {
+    grid-column: 2 / -1;
+    grid-row: 2;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 1050px) {
+  .net-money-card { grid-column: 1 / -1; }
+}
+
+@media (max-width: 360px) {
+  .balance-grid:has(.net-money-card) { grid-template-columns: minmax(0, 1fr); }
+}
+
+.page-heading {
+  gap: var(--space-group);
+  margin-bottom: var(--space-section);
+}
+
+.page-heading h1 {
+  font-size: var(--text-page);
+  line-height: 1.15;
+}
+
+.page-heading p {
+  margin-top: var(--space-field);
+  font-size: var(--text-body);
+  line-height: 1.5;
+}
+
+.panel-heading,
+.tools-panel-heading,
+.purchase-simulator-heading,
+.settings-title {
+  gap: var(--space-group);
+}
+
+.panel-heading h2,
+.tools-panel-heading h2,
+.purchase-simulator-heading h2,
+.settings-title h2,
+.wallet-dialog h2 {
+  margin-block: 0;
+  font-size: var(--text-section);
+  line-height: 1.3;
+}
+
+.activity-panel,
+.upcoming-panel,
+.wallet-panel,
+.wallets-page-panel,
+.settings-panel {
+  padding: var(--space-panel);
+}
+
+.activity-panel .panel-heading {
+  margin-block-end: 1rem;
+}
+
+.activity-options {
+  margin-block: var(--space-group);
+}
+
+.transaction-filters {
+  gap: var(--space-group);
+  margin-block: 0 var(--space-group);
+  padding: var(--space-group);
+}
+
+.field {
+  gap: var(--space-field);
+  font-size: var(--text-label);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.field > span:first-child,
+.checkbox-field strong {
+  font-size: var(--text-label);
+  font-weight: 600;
+}
+
+.field > span > small,
+.field-note,
+.metric-caption,
+.activity-count,
+.wallet-info small,
+.transaction-info small,
+.form-privacy {
+  font-size: var(--text-caption);
+  line-height: 1.45;
+}
+
+.field input,
+.field select,
+.field textarea {
+  font-size: var(--text-body);
+  font-weight: 400;
+}
+
+.field input,
+.field select {
+  min-height: var(--control-height);
+  border-radius: 8px;
+}
+
+.field textarea {
+  font-family: inherit;
+}
+
+.currency-input { min-height: var(--control-height); }
+.currency-input input { min-height: calc(var(--control-height) - 2px); }
+
+.button {
+  min-height: 2.5rem;
+  font-size: var(--text-label);
+  line-height: 1.25;
+}
+
+.metric-label,
+.wallet-action,
+.wallet-info strong,
+.wallet-amount,
+.transaction-info strong,
+.transaction-amount,
+.entry-options > summary {
+  font-size: var(--text-label);
+}
+
+.wallet-info small,
+.transaction-info span,
+.upcoming-row small {
+  line-height: 1.45;
+}
+
+.metric-label,
+.wallet-info strong,
+.transaction-info strong,
+.upcoming-row strong {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  .field input, .field select, .field textarea { font-size: 16px; }
+}
+
+.mobile-nav-link small { font-size: .6875rem; }
+
+@media (max-width: 420px) {
+  .transaction-dialog .quick-choices .button { font-size: var(--text-caption); }
+}
+
+.page-content > .geng-settings { margin-block-start: var(--space-section); }
+
+#app-toasts {
+  position: fixed;
+  z-index: 30;
+  inset-inline-end: max(1rem, env(safe-area-inset-right));
+  inset-block-end: max(1rem, env(safe-area-inset-bottom));
+  display: grid;
+  gap: var(--space-field);
+  width: min(26rem, calc(100% - 2rem));
+  pointer-events: none;
+}
+
+.app-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-group);
+  padding: .75rem;
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--brand);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: var(--text-label);
+  pointer-events: auto;
+}
+
+.app-toast > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-toast > .ui-icon { color: var(--brand-dark); }
+.toast-error { border-inline-start-color: #dc776c; }
+.toast-error > .ui-icon { color: #dc776c; }
+
+@media (max-width: 760px) {
+  #app-toasts { inset-block-end: calc(4.75rem + env(safe-area-inset-bottom)); }
+}
+
+.wallet-dialog {
+  --dialog-padding: 23px;
+  padding: var(--dialog-padding);
+  scroll-padding-block: 5.5rem;
+}
+
+.wallet-dialog .dialog-heading,
+.wallet-dialog.confirm-dialog > h2,
+.balance-adjustment-dialog h2,
+.wallet-dialog .dialog-actions {
+  position: sticky;
+  z-index: 2;
+  background: var(--surface);
+  margin-inline: calc(-1 * var(--dialog-padding));
+  padding-inline: var(--dialog-padding);
+}
+
+.wallet-dialog .dialog-heading,
+.wallet-dialog.confirm-dialog > h2,
+.balance-adjustment-dialog h2 {
+  inset-block-start: calc(-1 * var(--dialog-padding));
+  padding-block: var(--dialog-padding) .65rem;
+  margin-block-start: calc(-1 * var(--dialog-padding));
+  border-bottom: 1px solid var(--border);
+}
+
+.wallet-dialog .dialog-actions {
+  inset-block-end: calc(-1 * var(--dialog-padding));
+  padding-block: .7rem var(--dialog-padding);
+  margin-block-end: calc(-1 * var(--dialog-padding));
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 760px) {
+  .wallet-dialog { --dialog-padding: 16px; }
 }

@@ -31,7 +31,8 @@ export function formatPHP(centavos: number): string {
 }
 
 export function parsePesoToCentavos(value: string): number | null {
-  const match = /^(\d+)(?:\.(\d{0,2}))?$/.exec(value.trim())
+  const text = value.trim()
+  const match = /^(\d+)(?:\.(\d{0,2}))?$/.exec(text.startsWith('.') && text.length > 1 ? '0' + text : text)
   if (!match) return null
 
   const pesos = Number(match[1])
@@ -53,4 +54,23 @@ export function sumCentavos(amounts: readonly number[]): number {
 
 export function balanceAdjustment(recordedCentavos: number, actualCentavos: number) {
   return sumCentavos([actualCentavos, -recordedCentavos])
+}
+
+export function netMoneyCentavos(walletTotalCentavos: number, outstandingCentavos: number) {
+  return sumCentavos([walletTotalCentavos, -outstandingCentavos])
+}
+
+export function isMoneyInputDraft(value: string, allowNegative = false): boolean {
+  const magnitude = allowNegative && value.startsWith('-') ? value.slice(1) : value
+  if (!magnitude) return value === '' || (allowNegative && value === '-')
+  return magnitude === '.' ||
+    (/^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/.test(magnitude) && parsePesoToCentavos(magnitude) !== null)
+}
+
+export function moneyPasteText(value: string): string {
+  const text = value.trim()
+  if (/^-?\s*₱?\s*(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{0,2})?$/.test(text)) {
+    return text.replace(/[\s₱,]/g, '')
+  }
+  return text
 }

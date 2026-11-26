@@ -1,3 +1,4 @@
+import MoneyInput from './MoneyInput'
 import type { BudgetPlan } from '../domain/planning'
 import { Plus, X } from 'lucide-react'
 import { CategoryIconPicker, CategorySymbol } from './IconPicker'
@@ -49,7 +50,8 @@ export default function TransactionDialog({
   const [entryKind, setEntryKind] = useState<EntryKind>(editingSchedule ? scheduleEntryKind(editingSchedule) : editingTransaction?.kind ?? lastKind ?? 'expense')
   const kind = ledgerKind(entryKind)
   const today = localDateInput()
-  const [date, setDate] = useState(editingSchedule?.dueOn ?? editingTransaction?.occurredOn ?? today)
+  const [date, setDate] = useState(editingSchedule?.dueOn ?? editingTransaction?.occurredOn ??
+    (entryKind === 'payable' || entryKind === 'receivable' ? '' : today))
   const hasHistory = editingSchedule && (editingSchedule.kind === 'expectedIncome' ? editingSchedule.receipts.length
     : editingSchedule.kind === 'debt' ? editingSchedule.settlements.length : editingSchedule.payments.length)
   const canSchedule = !editingTransaction && kind !== 'transfer' && kind !== 'adjustment'
@@ -277,6 +279,8 @@ export default function TransactionDialog({
               {quickAddKinds.map((choice) => <button key={choice} type="button" className="button button-outline"
                 aria-pressed={entryKind === choice || (choice === 'payable' && isDebt)} onClick={() => {
                   setEntryKind(choice)
+                  if (choice === 'payable' && !isDebt) setDate('')
+                  if (choice !== 'payable' && !date) setDate(today)
                   setCategoryId('')
                   setBudgetId('')
                   setNewDebt(false)
@@ -310,10 +314,9 @@ export default function TransactionDialog({
               <span>{kind === 'adjustment' ? 'Adjustment amount' : 'Amount'}</span>
               <span className="currency-input">
                 <b>₱</b>
-                <input
+                <MoneyInput
                   autoFocus
                   name="amount"
-                  inputMode="decimal"
                   required
                   defaultValue={editingTransaction || editingSchedule ? formatPHP((editingTransaction ?? editingSchedule)!.amountCentavos).replace(/[^\d.]/g, '') : ''}
                   placeholder="0.00"
@@ -383,8 +386,8 @@ export default function TransactionDialog({
           )}
 
             <label className="field">
-              <span>{isDebt || planned ? 'Due date' : 'Date'}</span>
-              <input name="occurredOn" type="date" required disabled={Boolean(hasHistory)} value={date} onChange={(event) => {
+              <span>{isDebt ? 'Due date (optional)' : planned ? 'Due date' : 'Date'}</span>
+              <input name="occurredOn" type="date" required={!isDebt || recurrence !== 'none'} disabled={Boolean(hasHistory)} value={date} onChange={(event) => {
                 setDate(event.target.value)
                 setPlanOverride(undefined)
               }} />
@@ -425,7 +428,7 @@ export default function TransactionDialog({
                 <span>Transfer fee <small>optional</small></span>
                 <span className="currency-input">
                   <b>₱</b>
-                  <input name="fee" inputMode="decimal" defaultValue={editingTransaction?.feeCentavos !== undefined ? formatPHP(editingTransaction.feeCentavos).replace(/[^\d.]/g, '') : ''} placeholder="0.00" />
+                  <MoneyInput name="fee" defaultValue={editingTransaction?.feeCentavos !== undefined ? formatPHP(editingTransaction.feeCentavos).replace(/[^\d.]/g, '') : ''} placeholder="0.00" />
                 </span>
               </label>
                 )}
@@ -478,7 +481,7 @@ export default function TransactionDialog({
                 )}
                 {planned && isDebt && recurrence !== 'none' && (
                   <label className="field">Amount kada hulog
-                    <input name="installmentAmount" inputMode="decimal" disabled={Boolean(hasHistory)}
+                    <MoneyInput name="installmentAmount" disabled={Boolean(hasHistory)}
                       defaultValue={editingSchedule?.kind === 'debt' && editingSchedule.installmentAmountCentavos
                         ? formatPHP(editingSchedule.installmentAmountCentavos).replace(/[^\d.]/g, '') : ''} />
                   </label>

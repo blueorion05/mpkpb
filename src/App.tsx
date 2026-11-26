@@ -1,8 +1,10 @@
+import Toast from './components/Toast'
+import MoneyInput from './components/MoneyInput'
 import { defaultForecastPreferences, readForecastPreferences, type ForecastPreferences } from './domain/forecastPreferences'
 import { SlidersHorizontal } from 'lucide-react'
 import AdjustBalance from './components/AdjustBalance'
 import { outstandingObligations } from './domain/debts'
-import { CircleAlert, CircleCheck, Activity, ChartNoAxesCombined, ClipboardList, ChevronRight, Ellipsis, Eye, EyeOff, House, LockKeyhole, Monitor, Moon, Plus, ShieldCheck, Sun, Wallet as WalletIconGlyph, X, type LucideIcon } from 'lucide-react'
+import { Activity, ChartNoAxesCombined, ClipboardList, ChevronRight, Scale, Ellipsis, Eye, EyeOff, House, LockKeyhole, Monitor, Moon, Plus, ShieldCheck, Sun, Wallet as WalletIconGlyph, X, type LucideIcon } from 'lucide-react'
 import Mascot from './components/Mascot'
 import { WalletIconPicker, WalletSymbol } from './components/IconPicker'
 import type { CategoryIcon } from './domain/categoryIcons'
@@ -65,7 +67,7 @@ import {
   type BudgetPlan,
   type ExpectedIncome,
 } from './domain/planning'
-import { formatPHP, parsePesoToCentavos, sumCentavos } from './domain/money'
+import { formatPHP, netMoneyCentavos, parsePesoToCentavos, sumCentavos } from './domain/money'
 import './App.css'
 
 const ForecastPage = lazy(() => import('./components/ForecastPage'))
@@ -904,32 +906,14 @@ function App() {
           {!loading && !walletLoadError && !planningLoadError && humorEnabled && page !== 'more' && page !== 'home' && (
             <p className="geng-note"><span aria-hidden="true">{GENG_EXPRESSION}</span> {getGengMessage(pageContext[page], { humorEnabled, profanityEnabled })}</p>
           )}
-          {pageError && (
-            <div className="error-banner" role="alert">
-              <CircleAlert className="ui-icon" aria-hidden="true" /><span>{pageError}</span>
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => {
-                  setPageError('')
-                  setLoading(true)
-                  setLoadAttempt((attempt) => attempt + 1)
-                }}
-              >Subukan ulit</button>
-              <button type="button" className="text-button" onClick={() => setPageError('')}>Isara</button>
-            </div>
-          )}
-          {financialDataError && !walletLoadError && (
-            <div className="error-banner" role="alert">
-              <span>{financialDataError}</span>
-            </div>
-          )}
-          {successMessage && (
-            <div className="success-banner" role="status">
-              <CircleCheck className="ui-icon" aria-hidden="true" /><span>{successMessage}</span>
-              <button type="button" className="text-button" onClick={() => setSuccessMessage('')}>Isara</button>
-            </div>
-          )}
+          {pageError && <Toast key={'error:' + pageError} tone="error" message={pageError} onDismiss={() => setPageError('')}
+            action={<button type="button" className="text-button" onClick={() => {
+              setPageError('')
+              setLoading(true)
+              setLoadAttempt((attempt) => attempt + 1)
+            }}>Subukan ulit</button>} />}
+          {financialDataError && !walletLoadError && <Toast key={financialDataError} tone="error" message={financialDataError} />}
+          {successMessage && <Toast key={'success:' + successMessage} tone="success" message={successMessage} onDismiss={() => setSuccessMessage('')} />}
           {page === 'home' && (
             <Dashboard
               displayName={displayName}
@@ -1030,15 +1014,6 @@ function App() {
             />
           )}
           {page === 'more' && (
-            <fieldset className="geng-settings">
-              <legend>Geng Geng</legend>
-              <label><input type="checkbox" checked={humorEnabled} disabled={loading}
-                onChange={(event) => void changeHumor('humorEnabled', event.target.checked)} /> Show Taglish humor</label>
-              <label><input type="checkbox" checked={profanityEnabled} disabled={loading || !humorEnabled}
-                onChange={(event) => void changeHumor('profanityEnabled', event.target.checked)} /> Allow mild profanity</label>
-            </fieldset>
-          )}
-          {page === 'more' && (
             <ToolsPage
               wallets={wallets}
               transactions={transactions}
@@ -1053,6 +1028,15 @@ function App() {
               theme={theme}
               onThemeChange={(next) => void changeTheme(next)}
             />
+          )}
+          {page === 'more' && (
+            <fieldset className="geng-settings">
+              <legend>Geng Geng</legend>
+              <label><input type="checkbox" checked={humorEnabled} disabled={loading}
+                onChange={(event) => void changeHumor('humorEnabled', event.target.checked)} /> Show Taglish humor</label>
+              <label><input type="checkbox" checked={profanityEnabled} disabled={loading || !humorEnabled}
+                onChange={(event) => void changeHumor('profanityEnabled', event.target.checked)} /> Allow mild profanity</label>
+            </fieldset>
           )}
           </Suspense>
           {page === 'more' && !loading && <><DataSafety /><PrivacySettings /></>}
@@ -1116,9 +1100,8 @@ function App() {
                   <span>Starting balance</span>
                   <span className="currency-input">
                     <b>₱</b>
-                    <input
+                    <MoneyInput
                       name="openingBalance"
-                      inputMode="decimal"
                       defaultValue={editingWallet?.openingBalanceCentavos ? centavosInput(editingWallet.openingBalanceCentavos) : ''}
                       readOnly={Boolean(editingWallet && transactions.some((transaction) =>
                         transaction.walletId === editingWallet.id || transaction.toWalletId === editingWallet.id,
@@ -1143,11 +1126,11 @@ function App() {
                 <span><strong>Pera na hindi gagalawin</strong><small>Hiwalay ito sa pwedeng gastusin.</small></span>
               </label>
               {formError && <p className="form-error" role="alert">{formError}</p>}
+              <p className="form-privacy"><LockKeyhole className="ui-icon" aria-hidden="true" /> Saved on this device only.</p>
               <div className="dialog-actions">
                 <button className="button button-quiet" type="button" onClick={() => void closeWalletDialog()}>{isOnboarding ? 'Skip for now' : 'Cancel'}</button>
                 <button className="button button-primary" type="submit">{editingWallet ? 'Save changes' : 'Save wallet'}</button>
               </div>
-              <p className="form-privacy"><LockKeyhole className="ui-icon" aria-hidden="true" /> Saved on this device only.</p>
             </form>
           </section>
         </div>
@@ -1265,6 +1248,15 @@ function Dashboard({
     observer.observe(mascot)
     return () => { observer.disconnect(); onGreetingVisibility(false) }
   }, [onGreetingVisibility])
+  let netMoney: number | undefined
+  let netMoneyError = false
+  if (totals && outstanding.amount !== undefined) {
+    try {
+      netMoney = netMoneyCentavos(totals.all, outstanding.amount)
+    } catch {
+      netMoneyError = true
+    }
+  }
   const money = (amount: number | undefined) => amount === undefined ? '—' : visible ? formatPHP(amount) : '••••'
   const shortage = month?.result?.spendableShortageEpisodes[0]
   const walletShortage = month?.result?.walletSummaries.flatMap((wallet) => wallet.shortageEpisodes)
@@ -1295,6 +1287,12 @@ function Dashboard({
           <div className="card-label-row"><span className="metric-label">Pwedeng gastusin</span><span className="card-icon mint-icon"><ShieldCheck className="ui-icon" aria-hidden="true" /></span></div>
           <strong className="balance-amount">{loading ? '…' : totals ? visible ? formatPHP(totals.spendable) : '₱ ••••••' : '—'}</strong>
           <span className="metric-caption">Hiwalay ang pera na hindi gagalawin</span>
+        </article>
+        <article className="balance-card net-money-card">
+          <div className="card-label-row"><span className="metric-label">Net money</span><span className="card-icon mint-icon"><Scale className="ui-icon" aria-hidden="true" /></span></div>
+          <strong className="balance-amount">{loading ? '…' : money(netMoney)}</strong>
+          <span className="metric-caption">Lahat ng pera bawas lahat ng babayaran</span>
+          {netMoneyError && <small role="alert">Hindi makuwenta ang net money sa supported na range.</small>}
         </article>
       </section>
 

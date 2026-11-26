@@ -176,7 +176,7 @@ function collectDebtEvents(
   walletIds: ReadonlySet<string>,
   events: ForecastEvent[],
 ): void {
-  if (debt.archived) return
+  if (debt.archived || debt.dueOn === undefined) return
   const progress = getDebtProgress(debt, request.today)
   let dueOn = progress.dueOn
   let index = progress.installmentsCompleted

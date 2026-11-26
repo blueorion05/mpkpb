@@ -1,3 +1,4 @@
+import Toast from './Toast'
 import { reloadLocalSession } from '../localSession'
 import { useEffect, useState } from 'react'
 import {
@@ -131,8 +132,8 @@ export default function DataSafety() {
           </div>
         )}
       </fieldset>
-      {status && <p role="status">{status}</p>}
-      {error && <p role="alert">{error}</p>}
+      {status && <Toast key={status} tone="success" message={status} onDismiss={() => setStatus('')} />}
+      {error && <Toast key={error} tone="error" message={error} onDismiss={() => setError('')} />}
     </section>
   )
 }

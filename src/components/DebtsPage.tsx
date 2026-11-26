@@ -1,3 +1,5 @@
+import Toast from './Toast'
+import MoneyInput from './MoneyInput'
 import { Plus, X } from 'lucide-react'
 import Mascot from './Mascot'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
@@ -129,7 +131,7 @@ export default function DebtsPage({
   const activeWallets = wallets.filter((wallet) => !wallet.archived)
   const visibleDebts = debts
     .filter((debt) => includeArchived || !debt.archived)
-    .sort((left, right) => left.dueOn.localeCompare(right.dueOn))
+    .sort((left, right) => (left.dueOn ?? '9999-12-31').localeCompare(right.dueOn ?? '9999-12-31'))
   const visibleObligations = obligations
     .filter((obligation) => includeArchived || !obligation.archived)
     .sort((left, right) => left.dueOn.localeCompare(right.dueOn))
@@ -210,12 +212,7 @@ export default function DebtsPage({
           <span>Show archived</span>
         </label>
       </div>
-      {pageError && (
-        <div className="error-banner" role="alert">
-          <span>{pageError}</span>
-          <button className="text-button" type="button" onClick={() => setPageError('')}>Isara</button>
-        </div>
-      )}
+      {pageError && <Toast key={pageError} tone="error" message={pageError} onDismiss={() => setPageError('')} />}
       {activeTab === 'debts' ? (
         <section id="debts-panel" role="tabpanel" aria-labelledby="debts-tab" className="plans-list debts-list">
           {visibleDebts.length === 0 ? (
@@ -239,7 +236,7 @@ export default function DebtsPage({
                   <div>
                     <span className={`debt-direction debt-${debt.direction}`}>{directionLabel}</span>
                     <h2>{debt.name}</h2>
-                    <p>{recurrenceLabels[debt.recurrence]} · Due {displayDate(progress.dueOn)}</p>
+                    <p>{recurrenceLabels[debt.recurrence]} · {debt.dueOn ? 'Due ' + displayDate(progress.dueOn) : 'Walang due date'}</p>
                   </div>
                   <div className="debt-card-actions">
                     {!debt.archived && <button className="wallet-action" type="button" onClick={() => setEditingDebt(debt)}>Edit</button>}
@@ -261,7 +258,7 @@ export default function DebtsPage({
                 <div className="debt-overview">
                   <span><small>REMAINING TOTAL</small><strong>{formatPHP(progress.remainingTotalCentavos)}</strong></span>
                   <span><small>DUE THIS OCCURRENCE</small><strong>{formatPHP(progress.remainingThisOccurrenceCentavos)}</strong></span>
-                  <span><small>STATUS</small><strong className={`debt-status status-${progress.status}`}>{progress.status}</strong></span>
+                  <span><small>STATUS</small><strong className={`debt-status status-${progress.status}`}>{progress.status === 'undated' ? 'Open' : progress.status}</strong></span>
                 </div>
                 <div className="debt-meta">
                   <span>{wallet?.name ?? 'Unknown wallet'}</span>
@@ -442,9 +439,9 @@ function DebtDialog({ debt, wallets, categories, transactions, onClose, onSave }
       direction,
       amountCentavos,
       walletId: String(form.get('walletId') ?? ''),
-      dueOn: hasSettlements && debt ? debt.dueOn : dueOn,
+      dueOn: hasSettlements && debt ? debt.dueOn : dueOn || undefined,
       recurrence: hasSettlements && debt ? debt.recurrence : recurrence,
-      monthlyAnchorDay: hasSettlements && debt ? debt.monthlyAnchorDay : Number(dueOn.slice(-2)),
+      monthlyAnchorDay: hasSettlements && debt ? debt.monthlyAnchorDay : dueOn ? Number(dueOn.slice(-2)) : 1,
       ...(selectableCategories.some((category) => category.id === String(form.get('categoryId') ?? ''))
         ? { categoryId: String(form.get('categoryId')) }
         : {}),
@@ -488,15 +485,15 @@ function DebtDialog({ debt, wallets, categories, transactions, onClose, onSave }
           <label className="field"><span>Debt type</span><select name="direction" value={direction} onChange={(event) => setDirection(event.target.value === 'receivable' ? 'receivable' : 'payable')} disabled={hasSettlements}><option value="payable">Money I owe</option><option value="receivable">Money owed to me</option></select></label>
           <label className="field"><span>Description</span><input autoFocus name="name" required maxLength={80} defaultValue={debt?.name ?? ''} placeholder="e.g. Laptop financing" /></label>
           <div className="form-row">
-            <label className="field"><span>Total amount</span><span className="currency-input"><b>₱</b><input name="amount" inputMode="decimal" required defaultValue={debt ? amountInputValue(debt.amountCentavos) : ''} placeholder="0.00" /></span></label>
-            <label className="field"><span>Unang due date</span><input name="dueOn" type="date" required defaultValue={debt?.dueOn ?? todayDateOnly()} disabled={hasSettlements} /></label>
+            <label className="field"><span>Total amount</span><span className="currency-input"><b>₱</b><MoneyInput name="amount" required defaultValue={debt ? amountInputValue(debt.amountCentavos) : ''} placeholder="0.00" /></span></label>
+            <label className="field"><span>Unang due date{recurrence === 'none' ? ' (optional)' : ''}</span><input name="dueOn" type="date" required={recurrence !== 'none'} defaultValue={debt?.dueOn ?? ''} disabled={hasSettlements} /></label>
           </div>
           <div className="form-row">
             <label className="field"><span>Wallet</span><select name="walletId" required defaultValue={debt?.walletId ?? wallets[0]?.id ?? ''}>{wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}</select></label>
             <label className="field"><span>Category <small>optional</small></span><select name="categoryId" defaultValue={debt?.categoryId ?? ''}><option value="">Walang category</option>{selectableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
           </div>
           <label className="field"><span>Repeats</span><select value={recurrence} disabled={hasSettlements} onChange={(event) => { if (isRecurrenceFrequency(event.target.value)) setRecurrence(event.target.value) }}>{Object.entries(recurrenceLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          {recurrence !== 'none' && <label className="field"><span>Amount per installment</span><span className="currency-input"><b>₱</b><input name="installmentAmount" inputMode="decimal" required defaultValue={debt?.installmentAmountCentavos ? amountInputValue(debt.installmentAmountCentavos) : ''} placeholder="0.00" disabled={hasSettlements} /></span></label>}
+          {recurrence !== 'none' && <label className="field"><span>Amount per installment</span><span className="currency-input"><b>₱</b><MoneyInput name="installmentAmount" required defaultValue={debt?.installmentAmountCentavos ? amountInputValue(debt.installmentAmountCentavos) : ''} placeholder="0.00" disabled={hasSettlements} /></span></label>}
           {hasSettlements && <p className="field-note">The due date, recurrence, and installment structure are locked once settlement history exists.</p>}
           <label className="field">
             <span>Original transaction <small>optional</small></span>
@@ -586,7 +583,7 @@ function ObligationDialog({ obligation, wallets, categories, onClose, onSave }: 
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <label className="field"><span>Description</span><input autoFocus name="description" required maxLength={120} defaultValue={obligation?.description ?? ''} placeholder="e.g. Electricity" /></label>
           <div className="form-row">
-            <label className="field"><span>Amount per occurrence</span><span className="currency-input"><b>₱</b><input name="amount" inputMode="decimal" required defaultValue={obligation ? amountInputValue(obligation.amountCentavos) : ''} placeholder="0.00" /></span></label>
+            <label className="field"><span>Amount per occurrence</span><span className="currency-input"><b>₱</b><MoneyInput name="amount" required defaultValue={obligation ? amountInputValue(obligation.amountCentavos) : ''} placeholder="0.00" /></span></label>
             <label className="field"><span>Unang due date</span><input name="dueOn" type="date" required defaultValue={obligation?.dueOn ?? todayDateOnly()} disabled={hasPayments} /></label>
           </div>
           <div className="form-row">
@@ -641,12 +638,12 @@ function PaymentDialog({ target, onClose, onSave }: PaymentDialogProps) {
     <div className="dialog-backdrop">
       <section ref={dialogRef} className="wallet-dialog planning-dialog" role="dialog" aria-modal="true" aria-labelledby="payment-dialog-title">
         <div className="dialog-heading">
-          <div><h2 id="payment-dialog-title">{title}</h2><p>{description} · Due {displayDate(target.dueOn)}</p></div>
+          <div><h2 id="payment-dialog-title">{title}</h2><p>{description} · {target.kind === 'debt' && !target.item.dueOn ? 'Walang due date' : 'Due ' + displayDate(target.dueOn)}</p></div>
           <button className="icon-button" type="button" aria-label="Isara" disabled={saving} onClick={onClose} title="Isara"><X className="ui-icon" aria-hidden="true" /></button>
         </div>
         <form className="wallet-form" onSubmit={(event) => void submit(event)}>
           <div className="receipt-remaining"><span>Still due</span><strong>{formatPHP(target.remaining)}</strong></div>
-          <label className="field"><span>{target.kind === 'debt' ? target.item.direction === 'payable' ? 'Payment amount' : 'Collection amount' : 'Payment amount'}</span><span className="currency-input"><b>₱</b><input autoFocus name="amount" inputMode="decimal" required defaultValue={amountInputValue(target.remaining)} /></span></label>
+          <label className="field"><span>{target.kind === 'debt' ? target.item.direction === 'payable' ? 'Payment amount' : 'Collection amount' : 'Payment amount'}</span><span className="currency-input"><b>₱</b><MoneyInput autoFocus name="amount" required defaultValue={amountInputValue(target.remaining)} /></span></label>
           <p className="field-note">This creates an {target.kind === 'debt' && target.item.direction === 'receivable' ? 'income' : 'expense'} transaction in your local ledger. Partial amounts are allowed.</p>
           {error && <p className="form-error" role="alert">{error}</p>}
           <div className="dialog-actions"><button className="button button-outline" type="button" disabled={saving} onClick={onClose}>Cancel</button><button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Bayad na'}</button></div>

@@ -60,3 +60,13 @@ The supplied geng mascot is the product brand. The visible dashboard or navigati
 ## Everyday refinements
 
 Home shows outstanding debt and bills across all dates separately from month-end dues. Ongoing bills without a fixed count contribute their next unpaid occurrence. Add record starts with four types and suggests whether a record should post or be scheduled. New borrowing and lending require an explicit choice before moving wallet funds. Wallet adjustments post the difference to Activity.
+
+Home shows Net money as the total across all wallets minus all outstanding obligations. It follows the balance visibility setting and uses the same outstanding total as Mga babayaran.
+
+Pages share a typography scale, form-label styles, control heights, and panel spacing. Mobile layouts keep editable input text at 16px or larger and retain keyboard focus indicators.
+
+Utang and receivables can be saved and settled without a due date. Undated payables count toward Mga babayaran and Net money, and dated forecasts leave undated debts and receivables out. Installment schedules require a first due date.
+
+Dialogs use a stable size within the viewport and scroll internally when content expands. Money fields accept decimal amounts up to two places and validate edited or pasted values before submission. Standard pasted peso formatting is supported.
+
+Dialogs keep titles and actions in view while longer forms scroll. Temporary notifications float above the page and dismiss themselves. Form validation stays next to the form so users can correct errors.

@@ -17,7 +17,7 @@
   background: transparent;
   cursor: pointer;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--text-label);
   font-weight: 650;
 }
 
@@ -46,7 +46,7 @@
 .tools-controls > p {
   margin: 0 0 8px auto;
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: var(--text-caption);
   line-height: 1.6;
 }
 
@@ -67,7 +67,7 @@
 
 .tools-panel-heading h2 {
   margin: 4px 0 0;
-  font-size: 16px;
+  font-size: var(--text-section);
   letter-spacing: -0.4px;
 }
 
@@ -81,7 +81,7 @@
   border-radius: 20px;
   color: var(--brand-dark);
   background: var(--brand-wash);
-  font-size: 10px;
+  font-size: var(--text-caption);
   font-weight: 700;
 }
 
@@ -121,7 +121,7 @@
   border-radius: 50%;
   color: #88511d;
   background: #fff0d6;
-  font-size: 12px;
+  font-size: var(--text-caption);
   font-weight: 800;
 }
 
@@ -140,7 +140,7 @@
 .timeline-copy strong {
   overflow: hidden;
   color: var(--text);
-  font-size: 11px;
+  font-size: var(--text-caption);
   text-overflow: ellipsis;
 }
 
@@ -148,14 +148,14 @@
 .timeline-copy small,
 .metric-list small {
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: var(--text-caption);
   line-height: 1.5;
 }
 
 .reminder-amount {
   margin-left: auto;
   color: var(--text);
-  font-size: 10px;
+  font-size: var(--text-caption);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -163,7 +163,7 @@
 .tools-muted {
   margin: 0;
   color: var(--text-soft);
-  font-size: 11px;
+  font-size: var(--text-caption);
   line-height: 1.7;
 }
 
@@ -188,7 +188,7 @@
 
 .timeline-item time {
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: var(--text-caption);
   font-weight: 600;
 }
 
@@ -215,7 +215,7 @@
 
 .timeline-amount {
   color: var(--text);
-  font-size: 10px;
+  font-size: var(--text-caption);
   white-space: nowrap;
 }
 
@@ -251,13 +251,13 @@
 
 .tools-empty h3 {
   margin: 0 0 6px;
-  font-size: 13px;
+  font-size: var(--text-caption);
 }
 
 .tools-empty p {
   margin: 0;
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: var(--text-caption);
 }
 
 .analytics-controls {
@@ -304,7 +304,7 @@
   gap: 15px;
   margin: 0 0 12px;
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: var(--text-label);
 }
 
 .trend-legend span {
@@ -339,7 +339,7 @@
 
 .trend-row time {
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: var(--text-caption);
 }
 
 .trend-bars {
@@ -361,7 +361,7 @@
   padding-top: 12px;
   border-top: 1px solid var(--border);
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: var(--text-caption);
 }
 
 .trend-totals span {
@@ -371,7 +371,7 @@
 
 .trend-totals strong {
   color: var(--text);
-  font-size: 10px;
+  font-size: var(--text-caption);
 }
 
 .category-breakdown {
@@ -385,13 +385,13 @@
   justify-content: space-between;
   gap: 10px;
   color: var(--text);
-  font-size: 10px;
+  font-size: var(--text-label);
 }
 
 .category-breakdown li > div:first-child span,
 .budget-performance-heading span {
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: var(--text-label);
   white-space: nowrap;
 }
 
@@ -443,7 +443,7 @@
 .metric-list li > strong,
 .debt-progress-amount {
   color: var(--text);
-  font-size: 10px;
+  font-size: var(--text-caption);
   text-align: right;
 }
 
@@ -455,7 +455,7 @@
   display: block;
   margin-top: 6px;
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: var(--text-caption);
 }
 
 .budget-performance-track span.over {
@@ -488,7 +488,7 @@
   .tools-controls > p {
     flex-basis: 100%;
     margin: 0;
-    font-size: 9px;
+    font-size: var(--text-caption);
   }
 
   .reminder-panel,

@@ -1,9 +1,11 @@
+import Toast from './Toast'
+import MoneyInput from './MoneyInput'
 import { defaultForecastPreferences, type ForecastPreferences } from '../domain/forecastPreferences'
 import type { BudgetPlan } from '../domain/planning'
 import { ArrowDownLeft, ArrowUpRight, TriangleAlert } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
 import type { Wallet } from '../db/database'
-import type { DebtRecord, FinancialObligation } from '../domain/debts'
+import { getDebtProgress, type DebtRecord, type FinancialObligation } from '../domain/debts'
 import {
   calculateForecast,
   type ForecastScenario,
@@ -281,6 +283,11 @@ export default function ForecastPage({
           <h1>Aabot pa ba?</h1>
           <p>Silipin kung kailan papasok o lalabas ang pera at kung kailan ka posibleng kapusin. Tantiya ito.</p>
         </div>
+        <button className="button button-quiet forecast-reset" type="button" onClick={() => {
+          onChangePreferences(defaultForecastPreferences)
+          setHypotheticalPurchase(undefined)
+          setPurchaseDate(today)
+        }}>Reset forecast view</button>
       </div>
 
       <section className="panel forecast-controls" aria-label="Forecast settings">
@@ -314,33 +321,27 @@ export default function ForecastPage({
             ))}
           </select>
         </label>
-        <label className="field">Ipakita mula
+        <label className="field"><span>Ipakita mula</span>
           <input type="date" min={today} max={endOn} value={startOn} onChange={(event) => {
             const start = event.target.value
             if (start >= today && start <= endOn) onChangePreferences({ ...preferences, startOn: start })
           }} />
         </label>
-        <label className="field">Budget filter sa schedule
+        <label className="field"><span>Budget filter sa schedule</span>
           <select value={budget?.id ?? ''} onChange={(event) => onChangePreferences({ ...preferences, budgetId: event.target.value })}>
             <option value="">Lahat ng schedule</option>
             {budgetPlans.filter((plan) => !plan.archived).map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
           </select>
         </label>
-        <button className="button button-quiet" type="button" onClick={() => {
-          onChangePreferences(defaultForecastPreferences)
-          setHypotheticalPurchase(undefined)
-          setPurchaseDate(today)
-        }}>Reset forecast view</button>
         <form className="forecast-buffer-form" onSubmit={(event) => void saveBuffer(event)}>
           <label className="field">
             <span>Reserbang pera</span>
             <span className="currency-input">
               <b>₱</b>
-              <input
+              <MoneyInput
                 type={visible ? 'text' : 'password'}
-                inputMode="decimal"
                 value={bufferInput}
-                onChange={(event) => setBufferInput(event.target.value)}
+                onValueChange={setBufferInput}
                 aria-label="Reserbang pera sa pesos"
               />
             </span>
@@ -354,6 +355,9 @@ export default function ForecastPage({
         Protected and archived wallets are included in total projections, but not counted as spendable cash.
         The safety buffer is reserved when calculating safe daily and weekly spending.
       </p>
+      {debts.some((debt) => !debt.archived && !debt.dueOn && getDebtProgress(debt, today).remainingTotalCentavos > 0) && (
+        <p className="forecast-buffer-note">Hiwalay sa forecast ang utang na walang due date.</p>
+      )}
       {bufferError && <p className="form-error" role="alert">{bufferError}</p>}
       <section className="panel purchase-simulator" aria-label="Afford ko ba?">
         <div className="purchase-simulator-heading">
@@ -366,8 +370,8 @@ export default function ForecastPage({
         <form className="purchase-simulator-form" onSubmit={(event) => simulatePurchase(event)}>
           <label className="field">
             <span>Presyo</span>
-            <span className="currency-input"><b>₱</b><input type={visible ? 'text' : 'password'} inputMode="decimal" value={purchaseAmountInput} onChange={(event) => {
-              setPurchaseAmountInput(event.target.value)
+            <span className="currency-input"><b>₱</b><MoneyInput type={visible ? 'text' : 'password'} value={purchaseAmountInput} onValueChange={(amount) => {
+              setPurchaseAmountInput(amount)
               setHypotheticalPurchase(undefined)
               setPurchaseError('')
             }} aria-label="What-if purchase amount in pesos" placeholder="0.00" /></span>
@@ -393,7 +397,7 @@ export default function ForecastPage({
           <button className="button button-primary" type="submit" disabled={availablePurchaseWallets.length === 0}>Tingnan kung kasya</button>
         </form>
         {purchaseError && <p className="form-error" role="alert">{purchaseError}</p>}
-        {hypotheticalPurchase && <p className="purchase-simulation-status" role="status">Simulation applied to the {wallets.find((wallet) => wallet.id === hypotheticalPurchase.walletId)?.name ?? 'selected'} forecast. Actual balances and transactions are unchanged.</p>}
+        {hypotheticalPurchase && <Toast key={JSON.stringify(hypotheticalPurchase)} tone="success" message={`Simulation applied to the ${wallets.find((wallet) => wallet.id === hypotheticalPurchase.walletId)?.name ?? 'selected'} forecast. Actual balances and transactions are unchanged.`} />}
       </section>
       {loading ? (
         <section className="panel forecast-empty" aria-live="polite">

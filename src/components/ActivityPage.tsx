@@ -1,3 +1,4 @@
+import Toast from './Toast'
 import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Plus, SlidersHorizontal } from 'lucide-react'
 import Mascot from './Mascot'
 import { CategorySymbol } from './IconPicker'
@@ -105,9 +106,7 @@ export default function ActivityPage({
           <p>Dito mo makikita ang aktwal na pasok at labas ng pera.</p>
         </div>
         {!loading && !dataUnavailable && transactions.length > 0 && !summary && (
-          <div className="error-banner" role="alert">
-            Ledger totals exceed the safe calculation range. No summary is shown.
-          </div>
+          <Toast tone="error" message="Ledger totals exceed the safe calculation range. No summary is shown." />
         )}
         <button className="button button-primary add-wallet-button" type="button" onClick={onAdd} disabled={!canAdd}>
           <Plus className="ui-icon" aria-hidden="true" /> Add record
@@ -131,10 +130,7 @@ export default function ActivityPage({
 
       <section className="panel activity-panel" aria-label="Mga record">
         <div className="panel-heading">
-          <div>
-
-            <h2>Mga record</h2>
-          </div>
+          <h2>Mga record</h2>
           <span className="activity-count">{loading ? 'Naglo-load…' : `${filteredTransactions.length} shown`}</span>
         </div>
 

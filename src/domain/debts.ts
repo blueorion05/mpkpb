@@ -24,7 +24,7 @@ export interface DebtRecord {
   amountCentavos: number
   walletId: string
   categoryId?: string
-  dueOn: string
+  dueOn?: string
   recurrence: RecurrenceFrequency
   monthlyAnchorDay: number
   installmentAmountCentavos?: number
@@ -61,7 +61,7 @@ export interface DebtProgress {
   remainingThisOccurrenceCentavos: number
   remainingTotalCentavos: number
   installmentsCompleted: number
-  status: 'upcoming' | 'due' | 'overdue' | 'settled'
+  status: 'upcoming' | 'due' | 'overdue' | 'undated' | 'settled'
 }
 
 export interface ObligationProgress {
@@ -111,6 +111,12 @@ function debtInstallmentCount(debt: DebtRecord): number | undefined {
   if (debt.installmentCount !== undefined) return debt.installmentCount
   if (debt.installmentAmountCentavos === undefined) return undefined
   return Math.ceil(debt.amountCentavos / debt.installmentAmountCentavos)
+}
+
+// Undated debts use a stable internal key for settlement links. The UI and forecast
+// never treat that key as the date money is expected to move.
+function debtOccurrenceKey(debt: DebtRecord): string {
+  return debt.dueOn ?? new Date(debt.createdAt).toISOString().slice(0, 10)
 }
 
 function nextDebtDate(debt: DebtRecord, dueOn: string): string {
@@ -202,7 +208,7 @@ export function isDebtRecord(value: unknown): value is DebtRecord {
     typeof debt.walletId !== 'string' ||
     !debt.walletId ||
     (debt.categoryId !== undefined && (typeof debt.categoryId !== 'string' || !debt.categoryId)) ||
-    !isDateOnly(debt.dueOn) ||
+    (debt.dueOn === undefined ? recurrence !== 'none' : !isDateOnly(debt.dueOn)) ||
     !isRecurrenceFrequency(recurrence) ||
     typeof debt.monthlyAnchorDay !== 'number' ||
     !Number.isInteger(debt.monthlyAnchorDay) ||
@@ -244,7 +250,7 @@ export function isDebtRecord(value: unknown): value is DebtRecord {
     debt.settlements,
     debt.amountCentavos,
     (index) => requiredDebtOccurrenceAmount(debt as DebtRecord, index),
-    debt.dueOn,
+    debtOccurrenceKey(debt as DebtRecord),
     recurrence,
     debt.monthlyAnchorDay,
     installmentCount,
@@ -307,7 +313,7 @@ export function getDebtProgress(debt: DebtRecord, today: string): DebtProgress {
   }
   const totalSettledCentavos = sumCentavos(debt.settlements.map((item) => item.amountCentavos))
   const remainingTotalCentavos = debt.amountCentavos - totalSettledCentavos
-  let dueOn = debt.dueOn
+  let dueOn = debtOccurrenceKey(debt)
   let installmentsCompleted = 0
   let expectedCentavos = requiredDebtOccurrenceAmount(debt, 0)
   let settledThisOccurrenceCentavos = amountPaidOn(debt.settlements, dueOn)
@@ -329,6 +335,7 @@ export function getDebtProgress(debt: DebtRecord, today: string): DebtProgress {
   }
   const status = remainingTotalCentavos === 0
     ? 'settled'
+    : debt.dueOn === undefined ? 'undated'
     : dueOn > today
       ? 'upcoming'
       : dueOn < today
@@ -450,7 +457,7 @@ export function removeDebtSettlement(debt: DebtRecord, transactionId: string, up
 }
 
 function getDebtOccurrenceIndex(debt: DebtRecord, dueOn: string): number {
-  let currentDueOn = debt.dueOn
+  let currentDueOn = debtOccurrenceKey(debt)
   let index = 0
   while (currentDueOn < dueOn && index < debt.settlements.length + 1) {
     if (debt.recurrence === 'none') break

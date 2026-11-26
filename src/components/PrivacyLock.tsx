@@ -1,3 +1,4 @@
+import Toast from './Toast'
 import { reloadLocalSession } from '../localSession'
 import { useEffect, useState, type ReactNode } from 'react'
 import { getPreference, savePreference } from '../db/database'
@@ -137,7 +138,7 @@ export function PrivacySettings() {
           </div>
         </form>
       )}
-      {error && <p role="alert">{error}</p>}
+      {error && <Toast key={error} tone="error" message={error} onDismiss={() => setError('')} />}
     </section>
   )
 }

@@ -1,4 +1,5 @@
-﻿import { getDebtProgress, getObligationProgress } from '../domain/debts'
+import MoneyInput from './MoneyInput'
+import { getDebtProgress, getObligationProgress } from '../domain/debts'
 import { getExpectedIncomeProgress } from '../domain/planning'
 import { entryLabels, ledgerKind, scheduleEntryKind, type ScheduledRecord } from '../domain/entry'
 import { formatPHP, parsePesoToCentavos } from '../domain/money'
@@ -19,9 +20,9 @@ export default function UpcomingList({ records, today, visible, onEdit, onSettle
     const progress = record.kind === 'debt' ? getDebtProgress(record, today)
       : record.kind === 'obligation' ? getObligationProgress(record, today)
         : getExpectedIncomeProgress(record, today)
-    return { record, ...progress, remaining: 'remainingCentavos' in progress
+    return { record, ...progress, sortDate: record.kind === 'debt' && !record.dueOn ? '9999-12-31' : progress.dueOn, remaining: 'remainingCentavos' in progress
       ? progress.remainingCentavos : progress.remainingThisOccurrenceCentavos }
-  }).sort((a, b) => Number(a.remaining === 0) - Number(b.remaining === 0) || a.dueOn.localeCompare(b.dueOn))
+  }).sort((a, b) => Number(a.remaining === 0) - Number(b.remaining === 0) || a.sortDate.localeCompare(b.sortDate))
 
   async function settle(event: FormEvent<HTMLFormElement>, record: ScheduledRecord, dueOn: string, remaining: number) {
     event.preventDefault()
@@ -48,6 +49,7 @@ export default function UpcomingList({ records, today, visible, onEdit, onSettle
     {!rows.length && <p>Wala pang naka-schedule. Gamitin ang Add record para sa susunod na pasok o bayad.</p>}
     <ul className="upcoming-list">
       {(expanded ? rows : rows.slice(0, 5)).map(({ record, dueOn, remaining }) => {
+        const undated = record.kind === 'debt' && !record.dueOn
         const kind = scheduleEntryKind(record)
         const incoming = ledgerKind(kind) === 'income'
         const action = incoming ? 'Nakuha na' : 'Bayad na'
@@ -56,7 +58,7 @@ export default function UpcomingList({ records, today, visible, onEdit, onSettle
         return <li key={record.id}>
           <div className="upcoming-row">
             <div><strong>{title}</strong>{record.notes && <small>{record.notes}</small>}
-              <small>{entryLabels[kind]} · {dueOn} · {remaining === 0 ? action : dueOn < today ? 'Lampas na sa due date' : dueOn === today ? 'Due ngayon' : 'Upcoming'}</small>
+              <small>{entryLabels[kind]} · {undated ? 'Walang due date' : dueOn} · {remaining === 0 ? action : undated ? 'Open' : dueOn < today ? 'Lampas na sa due date' : dueOn === today ? 'Due ngayon' : 'Upcoming'}</small>
             </div>
             <strong>{visible ? formatPHP(remaining || record.amountCentavos) : '••••'}</strong>
             {remaining > 0 && <div className="upcoming-actions">
@@ -67,7 +69,7 @@ export default function UpcomingList({ records, today, visible, onEdit, onSettle
           </div>
           {active && <form className="wallet-form settlement-form" onSubmit={(event) => void settle(event, record, dueOn, remaining)}>
             <div className="form-row">
-              <label className="field">Amount<input name="amount" inputMode="decimal" required
+              <label className="field">Amount<MoneyInput name="amount" required
                 defaultValue={visible ? formatPHP(remaining).replace(/[^\d.]/g, '') : ''} /></label>
               <label className="field">Aktwal na petsa<input name="actualOn" type="date" required defaultValue={today} max={today} /></label>
             </div>

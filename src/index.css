@@ -98,3 +98,15 @@ select:focus-visible {
 html, body, #root {
   min-height: 100dvh;
 }
+:root {
+  --text-caption: .75rem;
+  --text-label: .875rem;
+  --text-body: .9375rem;
+  --text-section: 1.125rem;
+  --text-page: clamp(1.625rem, 3vw, 2.125rem);
+  --space-field: .5rem;
+  --space-group: .75rem;
+  --space-panel: clamp(1rem, 2vw, 1.5rem);
+  --space-section: 1.25rem;
+  --control-height: 2.75rem;
+}

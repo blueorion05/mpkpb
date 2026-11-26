@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, Download } from 'lucide-react'
+import Toast from './Toast'
 import { useEffect, useState } from 'react'
 
 export default function OfflineStatus({ showReady }: { showReady: boolean }) {
@@ -40,7 +40,7 @@ export default function OfflineStatus({ showReady }: { showReady: boolean }) {
     }
   }, [])
 
-  if (waiting) return <p className="geng-note" role="status"><Download className="ui-icon" aria-hidden="true" /> Ready na ang update. Tapusin muna ang ginagawa mo, isara lahat ng MPKPB? tabs at windows, tapos buksan ulit.</p>
-  if (error) return <p className="geng-note" role="status"><CircleAlert className="ui-icon" aria-hidden="true" /> Hindi na-set up ang offline access. Buksan ulit ang app habang online.</p>
-  return offlineReady && showReady ? <p className="geng-note" role="status"><CircleCheck className="ui-icon" aria-hidden="true" /> Ready na kahit offline ang device.</p> : null
+  if (waiting) return <Toast key="Ready na ang update. Tap" tone="info" message="Ready na ang update. Tapusin muna ang ginagawa mo, isara lahat ng MPKPB? tabs at windows, tapos buksan ulit." />
+  if (error) return <Toast key="Hindi na-set up ang offl" tone="error" message="Hindi na-set up ang offline access. Buksan ulit ang app habang online." />
+  return offlineReady && showReady ? <Toast key="Ready na kahit offline a" tone="info" message="Ready na kahit offline ang device." /> : null
 }

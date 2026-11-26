@@ -62,3 +62,13 @@ The v1.0.0 tag identifies release commit f708b79. The GitHub push and existing V
 - Mobile fields use at least 16px text to avoid focus zoom while preserving pinch-to-zoom. All 45 tests, lint, type checking, and the production build passed. Edge mobile emulation verified computed text sizes for wallet, currency, select, and transaction inputs. Native iOS Safari remains untested.
 
 - Added the ProjectOrion creator credit under More > Settings. All 45 tests, lint, type checking, and the production build passed.
+
+- Aligned wallet rows in shared columns and moved actions below on narrow screens. Added Home Net money using all wallet balances less all outstanding obligations. Edge verified aligned mobile balances and that paying a bill reduces cash and obligations equally. All 45 tests, lint, type checking, and the production build passed.
+
+- Standardized page typography, form labels and controls, panel padding, and list spacing. Reviewed all six page layouts at 375px and 1280px in Edge. The full browser suite, 45 tests, lint, type checking, and the production build passed.
+
+- Made dates optional for one-time debts and receivables and aligned the three Home balance cards. Edge verified undated entry, partial payment, and desktop card alignment. All 46 tests, lint, type checking, and the production build passed.
+
+- Dialogs keep a fixed viewport-bounded size while content scrolls inside. Money inputs reject invalid typing and paste and accept formatted peso amounts. Edge verified the short mobile dialog, valid and invalid clipboard input, and existing workflows. All 47 tests, lint, type checking, and the production build passed.
+
+- Temporary notifications now use auto-dismissing floating toasts. Dialog headings and actions stay visible during internal scrolling. Edge verified toast placement and dismissal and pinned controls on a short mobile viewport. All 47 tests, lint, type checking, and the production build passed.

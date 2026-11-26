@@ -43,7 +43,9 @@ export function makeSchedule(
   if (kind === 'transfer' || kind === 'adjustment') {
     throw new Error('Pumili ng petsa ngayong araw o mas maaga para sa record na ito.')
   }
-  if (!isDateOnly(entry.dueOn) || !Number.isSafeInteger(entry.amountCentavos) || entry.amountCentavos <= 0) {
+  const undatedDebt = (kind === 'payable' || kind === 'receivable') && !entry.dueOn
+  if (undatedDebt && entry.recurrence !== 'none') throw new Error('Maglagay ng unang due date para sa hulugan.')
+  if ((!undatedDebt && !isDateOnly(entry.dueOn)) || !Number.isSafeInteger(entry.amountCentavos) || entry.amountCentavos <= 0) {
     throw new Error('I-check ang petsa at amount bago i-save.')
   }
   // Keep the original recurrence anchor when editing a shortened monthly date.
@@ -55,8 +57,8 @@ export function makeSchedule(
     amountCentavos: entry.amountCentavos,
     dueOn: entry.dueOn,
     recurrence: entry.recurrence,
-    monthlyAnchorDay: previous?.dueOn === entry.dueOn
-      ? previous.monthlyAnchorDay : Number(entry.dueOn.slice(-2)),
+    monthlyAnchorDay: previous && previous.dueOn === entry.dueOn
+      ? previous.monthlyAnchorDay : undatedDebt ? 1 : Number(entry.dueOn.slice(-2)),
     archived: previous?.archived ?? false,
     createdAt: previous?.createdAt ?? entry.timestamp,
     updatedAt: entry.timestamp,
@@ -75,6 +77,7 @@ export function makeSchedule(
     }
     return {
       ...base, kind: 'debt', direction: kind, name: entry.description,
+      dueOn: undatedDebt ? undefined : entry.dueOn,
       principalTransactionId: debt?.principalTransactionId,
       installmentAmountCentavos: installment,
       installmentCount: debt?.settlements.length ? debt.installmentCount

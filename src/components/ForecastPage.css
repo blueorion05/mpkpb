@@ -4,10 +4,10 @@
 
 .forecast-controls {
   display: grid;
-  grid-template-columns: minmax(150px, 0.8fr) minmax(170px, 1fr) minmax(240px, 1.3fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: end;
-  gap: 12px;
-  padding: 15px;
+  gap: var(--space-group);
+  padding: var(--space-panel);
 }
 
 .forecast-controls > .field,
@@ -16,9 +16,14 @@
 }
 
 .forecast-buffer-form {
+  grid-column: 2 / -1;
   display: flex;
   align-items: end;
   gap: 8px;
+}
+
+.forecast-reset {
+  flex: none;
 }
 
 .forecast-buffer-form .field {
@@ -27,14 +32,14 @@
 }
 
 .forecast-buffer-form .button {
-  min-height: 38px;
+  min-height: var(--control-height);
   white-space: nowrap;
 }
 
 .forecast-buffer-note {
   margin: 8px 2px 17px;
   color: var(--text-faint);
-  font-size: 9px;
+  font-size: var(--text-caption);
   line-height: 1.55;
 }
 
@@ -53,7 +58,7 @@
 
 .purchase-simulator-heading h2 {
   margin: 4px 0;
-  font-size: 15px;
+  font-size: var(--text-section);
   letter-spacing: -0.3px;
 }
 
@@ -61,7 +66,7 @@
 .purchase-simulation-status {
   margin: 0;
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: var(--text-label);
   line-height: 1.6;
 }
 
@@ -98,7 +103,7 @@
 .forecast-scenarios > p {
   margin: 0;
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: var(--text-caption);
   text-align: right;
 }
 
@@ -121,7 +126,7 @@
   background: transparent;
   cursor: pointer;
   font: inherit;
-  font-size: 9px;
+  font-size: var(--text-label);
   font-weight: 650;
 }
 
@@ -153,7 +158,7 @@
 
 .forecast-metric small {
   color: var(--text-faint);
-  font-size: 9px;
+  font-size: var(--text-caption);
   line-height: 1.4;
 }
 
@@ -176,13 +181,13 @@
 
 .forecast-shortage h2 {
   margin: 5px 0 0;
-  font-size: 13px;
+  font-size: var(--text-section);
 }
 
 .forecast-shortage > p {
   margin: 0;
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: var(--text-caption);
   line-height: 1.55;
 }
 
@@ -198,13 +203,13 @@
 .forecast-shortage li {
   display: grid;
   gap: 3px;
-  font-size: 9px;
+  font-size: var(--text-caption);
 }
 
 .forecast-shortage li > span,
 .forecast-shortage li > small {
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: var(--text-caption);
 }
 
 .forecast-chart-panel,
@@ -215,7 +220,7 @@
 
 .forecast-period {
   color: var(--text-faint);
-  font-size: 9px;
+  font-size: var(--text-caption);
   text-align: right;
 }
 
@@ -267,7 +272,7 @@
 .forecast-chart-note {
   margin: 2px 0 0;
   color: var(--text-faint);
-  font-size: 9px;
+  font-size: var(--text-caption);
   line-height: 1.5;
 }
 
@@ -312,7 +317,7 @@
 
 .forecast-event-copy strong {
   overflow: hidden;
-  font-size: 10px;
+  font-size: var(--text-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -320,7 +325,7 @@
 .forecast-event-copy small,
 .forecast-events li > strong {
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: var(--text-caption);
 }
 
 .forecast-events li > strong {
@@ -333,7 +338,7 @@
 .forecast-more-events {
   margin: 0;
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: var(--text-caption);
 }
 
 .forecast-more-events {
@@ -348,13 +353,13 @@
 
 .forecast-empty h2 {
   margin: 0 0 7px;
-  font-size: 15px;
+  font-size: var(--text-section);
 }
 
 .forecast-empty p {
   margin: 0;
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: var(--text-caption);
   line-height: 1.55;
 }
 
@@ -373,13 +378,18 @@
 }
 
 @media (max-width: 620px) {
+  .forecast-heading { flex-wrap: wrap; }
+
   .forecast-controls {
     grid-template-columns: 1fr;
   }
 
   .forecast-buffer-form {
     grid-column: auto;
+    flex-wrap: wrap;
   }
+
+  .forecast-buffer-form .field { flex-basis: 100%; }
 
   .purchase-simulator-form {
     grid-template-columns: 1fr;
@@ -407,7 +417,7 @@
     min-width: 0;
     flex: 1;
     padding: 0 6px;
-    font-size: 8px;
+    font-size: var(--text-label);
   }
 
   .forecast-metrics {
